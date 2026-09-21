@@ -20,6 +20,7 @@
         .score-item { background: #1a1a1a; padding: 12px 18px; border-radius: 8px; border-left: 4px solid #a78bfa; }
         .score-val { font-size: 22px; font-weight: bold; color: #a78bfa; }
         .back { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #4ade80; color: #000; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        .back-alt { background: #60a5fa; margin-left: 8px; }
         .validation-box { padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #6b7280; background: #1a1a1a; }
         .validation-ok { border-left-color: #4ade80; }
         .validation-prudence { border-left-color: #facc15; }
@@ -60,7 +61,11 @@
         <div class="ligne"><span class="label">Sport :</span> {{ match.sport }}</div>
         <div class="ligne"><span class="label">Compétition :</span> {{ match.competition }}</div>
         <div class="ligne"><span class="label">Rencontre :</span> {{ match.equipe1 }} vs {{ match.equipe2 }}</div>
+        {% if match.sport == "basket" %}
+        <div class="ligne"><span class="label">Écart attendu :</span> {{ lambda_home }} pts (équipe 1)</div>
+        {% else %}
         <div class="ligne"><span class="label">Buts attendus :</span> {{ lambda_home }} - {{ lambda_away }}</div>
+        {% endif %}
     </div>
 
     <div class="match">
@@ -70,17 +75,31 @@
     </div>
 
     <div class="match">
-        <h2>🎯 Scores prédits (Poisson)</h2>
+        {% if match.sport == "basket" %}
+        <h2>🎯 Marges et scores projetés</h2>
+        {% else %}
+        <h2>🎯 Scores prédits (Dixon-Coles)</h2>
+        {% endif %}
 
-        <div class="ligne"><span class="label">Score à la mi-temps le plus probable :</span></div>
+        <div class="ligne">
+            <span class="label">
+                {% if match.sport == "basket" %}Score à la mi-temps projeté :{% else %}Score à la mi-temps le plus probable :{% endif %}
+            </span>
+        </div>
         <div class="score-box">
             <div class="score-item">
                 <div class="score-val">{{ top_ht_score.score }}</div>
-                <div class="label">Proba : {{ (top_ht_score.proba * 100) | round(1) }}%</div>
+                <div class="label">
+                    {% if match.sport == "basket" %}Projection{% else %}Proba : {{ (top_ht_score.proba * 100) | round(1) }}%{% endif %}
+                </div>
             </div>
         </div>
 
-        <div class="ligne" style="margin-top: 15px;"><span class="label">2 scores exacts les plus probables :</span></div>
+        <div class="ligne" style="margin-top: 15px;">
+            <span class="label">
+                {% if match.sport == "basket" %}2 marges de victoire les plus probables :{% else %}2 scores exacts les plus probables :{% endif %}
+            </span>
+        </div>
         <div class="score-box">
             {% for s in top_2_scores %}
             <div class="score-item">
@@ -141,6 +160,6 @@
     {% endif %}
 
     <a href="/" class="back">← Nouvelle analyse</a>
-    <a href="/dashboard" class="back" style="background:#60a5fa; margin-left:8px;">📊 Dashboard</a>
+    <a href="/dashboard" class="back back-alt">📊 Dashboard</a>
 </body>
-            </html>
+    </html>
