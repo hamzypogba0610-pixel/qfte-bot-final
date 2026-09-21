@@ -13,6 +13,7 @@
         button { margin-top: 20px; width: 100%; padding: 12px; background: #4ade80; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 16px; }
         .lien-dashboard { text-align: center; margin-top: 10px; }
         .lien-dashboard a { color: #60a5fa; text-decoration: none; }
+        .aide { color: #9ca3af; font-size: 12px; margin-top: 2px; }
     </style>
 </head>
 <body>
@@ -29,12 +30,33 @@
 
         <label>Compétition</label>
         <input type="text" name="competition" placeholder="Ex: Ligue 1" required>
+        <div class="aide">Impacte le total de buts attendu (ex: Bundesliga = 3.1 buts/m)</div>
 
         <label>Équipe / Joueur 1</label>
         <input type="text" name="equipe1" required>
 
         <label>Équipe / Joueur 2</label>
         <input type="text" name="equipe2" required>
+
+        <h2>📈 Forme récente</h2>
+
+        <label>Forme de {{ 'l\'équipe 1' }} : de -2 (très mauvaise) à +2 (excellente)</label>
+        <select name="forme1">
+            <option value="-2">-2 — Très mauvaise (0/5 matchs)</option>
+            <option value="-1">-1 — Mauvaise (1/5)</option>
+            <option value="0" selected>0 — Neutre (2-3/5)</option>
+            <option value="1">+1 — Bonne (4/5)</option>
+            <option value="2">+2 — Excellente (5/5)</option>
+        </select>
+
+        <label>Forme de l'équipe 2 : de -2 à +2</label>
+        <select name="forme2">
+            <option value="-2">-2 — Très mauvaise (0/5 matchs)</option>
+            <option value="-1">-1 — Mauvaise (1/5)</option>
+            <option value="0" selected>0 — Neutre (2-3/5)</option>
+            <option value="1">+1 — Bonne (4/5)</option>
+            <option value="2">+2 — Excellente (5/5)</option>
+        </select>
 
         <h2>📊 Cotes du bookmaker</h2>
 
