@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from qfte_engine.pipeline import analyser_match
+from qfte_engine.historique import charger_historique, calculer_statistiques
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -54,4 +55,20 @@ async def analyser(
             "lambda_home": resultat.get("lambda_home", "-"),
             "lambda_away": resultat.get("lambda_away", "-"),
         },
-        )
+    )
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    stats = calculer_statistiques()
+    historique = charger_historique()
+    dernieres = list(reversed(historique[-20:]))
+
+    return templates.TemplateResponse(
+        request,
+        "dashboard.html",
+        {
+            "stats": stats,
+            "dernieres": dernieres,
+        },
+    )
