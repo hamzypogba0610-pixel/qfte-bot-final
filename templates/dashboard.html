@@ -13,17 +13,53 @@
         .stat:last-child { border-bottom: none; }
         .label { color: #9ca3af; }
         .val { font-weight: bold; color: #4ade80; }
+        .val.neg { color: #ef4444; }
+        .val.neutre { color: #facc15; }
         .drift-NORMAL { color: #4ade80; }
         .drift-SURVEILLANCE { color: #facc15; }
         .drift-CRITIQUE { color: #ef4444; }
         .histo { padding: 10px; background: #141414; border-radius: 6px; margin-bottom: 8px; font-size: 14px; }
         .histo .date { color: #6b7280; font-size: 12px; }
+        .histo .resultat-ok { color: #4ade80; font-size: 12px; }
+        .histo .resultat-attente { color: #facc15; font-size: 12px; }
         .back { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #4ade80; color: #000; text-decoration: none; border-radius: 6px; font-weight: bold; margin-right: 8px; }
         .back-alt { background: #60a5fa; }
     </style>
 </head>
 <body>
     <h1>📊 Dashboard QFTE V23.0</h1>
+
+    <div class="card">
+        <h2>💰 Performance</h2>
+        <div class="stat">
+            <span class="label">Bankroll de départ</span>
+            <span class="val">{{ roi.bankroll_depart }} €</span>
+        </div>
+        <div class="stat">
+            <span class="label">Bankroll actuelle</span>
+            <span class="val {% if roi.profit < 0 %}neg{% endif %}">{{ roi.bankroll_finale }} €</span>
+        </div>
+        <div class="stat">
+            <span class="label">Profit / Perte</span>
+            <span class="val {% if roi.profit < 0 %}neg{% endif %}">{{ roi.profit }} €</span>
+        </div>
+        <div class="stat">
+            <span class="label">ROI</span>
+            <span class="val {% if roi.roi_pct < 0 %}neg{% endif %}">{{ roi.roi_pct }} %</span>
+        </div>
+        <div class="stat">
+            <span class="label">Taux de réussite</span>
+            <span class="val neutre">{{ roi.taux_reussite }} %</span>
+        </div>
+        <div class="stat">
+            <span class="label">Paris joués</span>
+            <span class="val">{{ roi.total_paris }}</span>
+        </div>
+        <div class="stat">
+            <span class="label">Gagnés / Perdus</span>
+            <span class="val">{{ roi.paris_gagnes }} / {{ roi.paris_perdus }}</span>
+        </div>
+    </div>
 
     <div class="card">
         <h2>État du modèle</h2>
@@ -83,11 +119,17 @@
     <h2>20 dernières analyses</h2>
     {% for h in dernieres %}
     <div class="histo">
-        <div class="date">{{ h.date }}</div>
+        <div class="date">{{ h.date[:19].replace('T', ' ') }}</div>
         <div><strong>{{ h.equipe1 }} vs {{ h.equipe2 }}</strong> — {{ h.competition }}</div>
         <div class="label">Décision : {{ h.decision }}</div>
         {% if h.meilleure_reco %}
         <div class="label">Top reco : {{ h.meilleure_reco.marche }} — {{ h.meilleure_reco.niveau }} (EV {{ h.meilleure_reco.ev }})</div>
+        {% endif %}
+        {% if h.resultat %}
+        <div class="resultat-ok">✅ Résultat : {{ h.resultat.score_home }}-{{ h.resultat.score_away }}
+            ({{ h.resultat.paris|length }} pari(s) enregistré(s))</div>
+        {% else %}
+        <div class="resultat-attente">⏳ Résultat non saisi</div>
         {% endif %}
     </div>
     {% endfor %}
@@ -98,4 +140,4 @@
     <a href="/" class="back">← Nouvelle analyse</a>
     <a href="/dashboard" class="back back-alt">🔄 Actualiser</a>
 </body>
-          </html>
+                                         </html>
