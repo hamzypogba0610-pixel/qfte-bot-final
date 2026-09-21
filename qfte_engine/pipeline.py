@@ -2,8 +2,10 @@ import importlib
 
 _collect = importlib.import_module("qfte_engine.01_collect")
 _normalize = importlib.import_module("qfte_engine.02_normalize")
+_context = importlib.import_module("qfte_engine.13_context")
 _market = importlib.import_module("qfte_engine.03_market")
 _sport = importlib.import_module("qfte_engine.04_sport")
+_validation = importlib.import_module("qfte_engine.12_validation")
 _calibration = importlib.import_module("qfte_engine.05_calibration")
 _scores = importlib.import_module("qfte_engine.06_scores")
 _value = importlib.import_module("qfte_engine.07_value")
@@ -11,12 +13,12 @@ _risk = importlib.import_module("qfte_engine.08_risk")
 _discipline = importlib.import_module("qfte_engine.09_discipline")
 _output = importlib.import_module("qfte_engine.10_output")
 _monitor = importlib.import_module("qfte_engine.11_monitor")
-_validation = importlib.import_module("qfte_engine.12_validation")
 
 
 def analyser_match(match):
     data = _collect.collecter_donnees(match)
     data = _normalize.normaliser_donnees(data)
+    data = _context.analyser_contexte(data)   # NEW
     data = _market.analyser_marche(data)
     data = _sport.analyser_sport(data)
     data = _validation.valider_coherence(data)
