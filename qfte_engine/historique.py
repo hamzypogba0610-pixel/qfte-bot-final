@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 FICHIER_HISTORIQUE = "historique.json"
+BANKROLL_DEPART = 1000.0
 
 
 def charger_historique():
@@ -15,15 +16,25 @@ def charger_historique():
         return []
 
 
+def _ecrire_historique(historique):
+    try:
+        with open(FICHIER_HISTORIQUE, "w", encoding="utf-8") as f:
+            json.dump(historique, f, ensure_ascii=False, indent=2)
+    except IOError:
+        pass
+
+
 def sauvegarder_analyse(match, resultat):
     historique = charger_historique()
 
-    reco_principale = {}
     recos = resultat.get("recommandations", [])
-    if recos:
-        reco_principale = recos[0]
+    reco_principale = recos[0] if recos else {}
+
+    # ID unique basé sur le timestamp
+    id_unique = datetime.now().strftime("%Y%m%d%H%M%S%f")
 
     entree = {
+        "id": id_unique,
         "date": datetime.now().isoformat(),
         "sport": match.get("sport", "-"),
         "competition": match.get("competition", "-"),
@@ -37,20 +48,116 @@ def sauvegarder_analyse(match, resultat):
             "btts": match.get("cote_btts"),
         },
         "decision": resultat.get("decision", "-"),
+        "recommandations": recos,
         "meilleure_reco": reco_principale,
         "lambda_home": resultat.get("lambda_home"),
         "lambda_away": resultat.get("lambda_away"),
+        "resultat": None,  # rempli plus tard
     }
 
     historique.append(entree)
-
-    try:
-        with open(FICHIER_HISTORIQUE, "w", encoding="utf-8") as f:
-            json.dump(historique, f, ensure_ascii=False, indent=2)
-    except IOError:
-        pass
-
+    _ecrire_historique(historique)
     return entree
+
+
+def _pari_gagne(marche, selection, score_home, score_away):
+    """Retourne True si le pari est gagné selon le score final."""
+    total = score_home + score_away
+
+    if "Handicap" in marche:
+        # HA -0.5 Domicile : l'équipe 1 doit gagner
+        return score_home > score_away
+
+    if "Over" in marche and "2.5" in marche:
+        # Over 2.5 : total buts > 2.5
+        return total > 2.5
+
+    if "BTTS" in marche:
+        # Les deux équipes marquent
+        return score_home >= 1 and score_away >= 1
+
+    return False
+
+
+def enregistrer_resultat(id_unique, score_home, score_away, marches_joues):
+    historique = charger_historique()
+
+    for h in historique:
+        if h.get("id") == id_unique:
+            paris = []
+            for reco in h.get("recommandations", []):
+                marche = reco.get("marche", "")
+                if marche in marches_joues:
+                    gagne = _pari_gagne(marche, reco.get("selection", ""), score_home, score_away)
+                    stake_pct = float(str(reco.get("stake", "0")).replace("%", "") or 0)
+                    cote = float(reco.get("cote", 1.0))
+
+                    mise = BANKROLL_DEPART * (stake_pct / 100)
+                    gain = mise * (cote - 1) if gagne else -mise
+
+                    paris.append({
+                        "marche": marche,
+                        "cote": cote,
+                        "stake_pct": stake_pct,
+                        "mise": round(mise, 2),
+                        "gagne": gagne,
+                        "gain": round(gain, 2),
+                    })
+
+            h["resultat"] = {
+                "score_home": score_home,
+                "score_away": score_away,
+                "paris": paris,
+                "date_resultat": datetime.now().isoformat(),
+            }
+            _ecrire_historique(historique)
+            return h
+
+    return None
+
+
+def calculer_roi():
+    historique = charger_historique()
+
+    total_paris = 0
+    paris_gagnes = 0
+    paris_perdus = 0
+    total_mise = 0.0
+    total_gain = 0.0
+
+    for h in historique:
+        res = h.get("resultat")
+        if not res:
+            continue
+        for p in res.get("paris", []):
+            total_paris += 1
+            total_mise += p["mise"]
+            total_gain += p["gain"]
+            if p["gagne"]:
+                paris_gagnes += 1
+            else:
+                paris_perdus += 1
+
+    if total_mise == 0:
+        roi_pct = 0.0
+        taux_reussite = 0.0
+    else:
+        roi_pct = (total_gain / total_mise) * 100
+        taux_reussite = (paris_gagnes / total_paris) * 100 if total_paris > 0 else 0.0
+
+    bankroll_finale = BANKROLL_DEPART + total_gain
+
+    return {
+        "bankroll_depart": BANKROLL_DEPART,
+        "bankroll_finale": round(bankroll_finale, 2),
+        "profit": round(total_gain, 2),
+        "roi_pct": round(roi_pct, 2),
+        "taux_reussite": round(taux_reussite, 2),
+        "total_paris": total_paris,
+        "paris_gagnes": paris_gagnes,
+        "paris_perdus": paris_perdus,
+        "total_mise": round(total_mise, 2),
+    }
 
 
 def calculer_statistiques():
@@ -82,7 +189,6 @@ def calculer_statistiques():
         if marche:
             stats["par_marche"][marche] = stats["par_marche"].get(marche, 0) + 1
 
-    # Détection simple de dérive : ratio ATTAQUE / total
     total_attaques = (
         stats["par_decision"].get("ATTAQUE FORTE", 0)
         + stats["par_decision"].get("ATTAQUE", 0)
@@ -92,8 +198,7 @@ def calculer_statistiques():
     if ratio_attaques < 0.05 and total >= 10:
         stats["niveau_drift"] = "CRITIQUE"
         stats["message_drift"] = (
-            "Aucune opportunité détectée sur les 10 dernières analyses. "
-            "Modèle trop strict ou dérive."
+            "Aucune opportunité détectée sur les 10 dernières analyses."
         )
     elif ratio_attaques < 0.10 and total >= 10:
         stats["niveau_drift"] = "SURVEILLANCE"
