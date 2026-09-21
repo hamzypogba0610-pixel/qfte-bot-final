@@ -54,6 +54,7 @@ async def analyser(
             "top_2_scores": resultat.get("top_2_scores", []),
             "lambda_home": resultat.get("lambda_home", "-"),
             "lambda_away": resultat.get("lambda_away", "-"),
+            "validation": resultat.get("validation", {}),
         },
     )
 
