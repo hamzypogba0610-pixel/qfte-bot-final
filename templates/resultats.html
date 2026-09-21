@@ -28,12 +28,17 @@
         .validation-prudence { border-left-color: #facc15; }
         .validation-danger { border-left-color: #ef4444; }
         .validation-title { font-weight: bold; margin-bottom: 6px; }
+        .validation-ok .validation-title { color: #4ade80; }
+        .validation-prudence .validation-title { color: #facc15; }
+        .validation-danger .validation-title { color: #ef4444; }
         .validation-score { color: #9ca3af; font-size: 13px; margin-bottom: 8px; }
         .validation-alertes { margin: 8px 0 0 0; padding-left: 20px; font-size: 13px; }
+        .validation-alertes li { margin-bottom: 4px; }
         .resultat-box { background: #1a1a1a; padding: 15px; border-radius: 8px; margin-top: 25px; border-left: 5px solid #60a5fa; }
         .resultat-box label { display: block; margin-top: 10px; }
         .resultat-box input[type="number"] { width: 70px; padding: 8px; border-radius: 6px; border: 1px solid #333; background: #0f0f0f; color: #eee; }
-        .resultat-box button { margin-top: 15px; width: 100%; padding: 12px; background: #60a5fa; color: #000; font-weight: bold; border: none; border-radius: 6px; }
+        .resultat-box .coche { margin-top: 10px; display: block; font-weight: normal; }
+        .resultat-box button { margin-top: 15px; width: 100%; padding: 12px; background: #60a5fa; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 15px; }
         .calib-box { background: #141414; padding: 10px; border-radius: 6px; margin-top: 8px; font-size: 12px; }
         .calib-title { color: #a78bfa; font-weight: bold; margin-bottom: 4px; }
         .calib-src { display: flex; justify-content: space-between; padding: 2px 0; }
@@ -65,15 +70,18 @@
         <div class="ligne"><span class="label">Compétition :</span> {{ match.competition }}</div>
         <div class="ligne"><span class="label">Rencontre :</span> {{ match.equipe1 }} vs {{ match.equipe2 }}</div>
         {% if match.sport == "basket" %}
-        <div class="ligne"><span class="label">Écart attendu :</span> {{ lambda_home }} pts</div>
+        <div class="ligne"><span class="label">Écart attendu :</span> {{ lambda_home }} pts (équipe 1)</div>
         {% else %}
-        <div class="ligne"><span class="label">Buts attendus :</span> {{ lambda_home }} - {{ lambda_away }}</div>
+        <div class="ligne"><span class="label">Buts attendus (λ) :</span> {{ lambda_home }} - {{ lambda_away }}</div>
+        {% endif %}
+        {% if modele_lambda != "-" %}
+        <div class="ligne"><span class="label">Modèle λ :</span> {{ modele_lambda }}</div>
         {% endif %}
         {% if marge_estimee != "-" %}
-        <div class="ligne"><span class="label">Marge bookmaker :</span> {{ (marge_estimee * 100) | round(1) }}%</div>
+        <div class="ligne"><span class="label">Marge bookmaker estimée :</span> {{ (marge_estimee * 100) | round(1) }}%</div>
         {% endif %}
         {% if total_buts_comp != "-" %}
-        <div class="ligne"><span class="label">Total buts compétition :</span> {{ total_buts_comp }}</div>
+        <div class="ligne"><span class="label">Total de buts (référence) :</span> {{ total_buts_comp }}</div>
         {% endif %}
     </div>
 
@@ -81,13 +89,33 @@
     <div class="match">
         <h2>🧠 Analyse contextuelle</h2>
 
+        {% if contexte.scores and contexte.scores.dom_marques is not none %}
+        <h3>⚽ Moyennes de buts (scores réels)</h3>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe1 }} — marque à domicile</span>
+            <span class="ctx-val">{{ contexte.scores.dom_marques }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe1 }} — encaisse à domicile</span>
+            <span class="ctx-val">{{ contexte.scores.dom_encaisses }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe2 }} — marque à l'extérieur</span>
+            <span class="ctx-val">{{ contexte.scores.ext_marques }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe2 }} — encaisse à l'extérieur</span>
+            <span class="ctx-val">{{ contexte.scores.ext_encaisses }}</span>
+        </div>
+        {% endif %}
+
         <h3>📈 Forme</h3>
         <div class="ctx-row">
-            <span class="label">Forme Équipe 1 (dom. finale)</span>
+            <span class="label">Forme {{ match.equipe1 }} (dom. finale)</span>
             <span class="ctx-val {% if contexte.forme.dom_finale < 0 %}neg{% elif contexte.forme.dom_finale == 0 %}neutre{% endif %}">{{ contexte.forme.dom_finale }}</span>
         </div>
         <div class="ctx-row">
-            <span class="label">Forme Équipe 2 (ext. finale)</span>
+            <span class="label">Forme {{ match.equipe2 }} (ext. finale)</span>
             <span class="ctx-val {% if contexte.forme.ext_finale < 0 %}neg{% elif contexte.forme.ext_finale == 0 %}neutre{% endif %}">{{ contexte.forme.ext_finale }}</span>
         </div>
 
@@ -106,8 +134,8 @@
         <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_2 }}</span></div>
         <div class="ctx-row"><span class="label">Proba implicite Nul</span><span class="ctx-val neutre">{{ contexte.cotes.proba_implicite_nul }}</span></div>
         <div class="ctx-row"><span class="label">Marge bookmaker (2 issues)</span><span class="ctx-val">{{ contexte.cotes.marge_book }}%</span></div>
-        <div class="ctx-row"><span class="label">Mouvement Équipe 1</span><span class="ctx-val">{{ (contexte.cotes.mouvement_1 * 100) | round(2) }}%</span></div>
-        <div class="ctx-row"><span class="label">Mouvement Équipe 2</span><span class="ctx-val">{{ (contexte.cotes.mouvement_2 * 100) | round(2) }}%</span></div>
+        <div class="ctx-row"><span class="label">Mouvement {{ match.equipe1 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_1 * 100) | round(2) }}%</span></div>
+        <div class="ctx-row"><span class="label">Mouvement {{ match.equipe2 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_2 * 100) | round(2) }}%</span></div>
         <div class="ctx-row"><span class="label">Signal sharp détecté</span><span class="ctx-val">{{ contexte.cotes.sharp_signal }}</span></div>
         {% endif %}
     </div>
@@ -126,15 +154,25 @@
         <h2>🎯 Scores prédits (Dixon-Coles)</h2>
         {% endif %}
 
-        <div class="ligne"><span class="label">Score à la mi-temps le plus probable :</span></div>
+        <div class="ligne">
+            <span class="label">
+                {% if match.sport == "basket" %}Score à la mi-temps projeté :{% else %}Score à la mi-temps le plus probable :{% endif %}
+            </span>
+        </div>
         <div class="score-box">
             <div class="score-item">
                 <div class="score-val">{{ top_ht_score.score }}</div>
-                <div class="label">{% if top_ht_score.proba %}Proba : {{ (top_ht_score.proba * 100) | round(1) }}%{% endif %}</div>
+                <div class="label">
+                    {% if match.sport == "basket" %}Projection{% else %}Proba : {{ (top_ht_score.proba * 100) | round(1) }}%{% endif %}
+                </div>
             </div>
         </div>
 
-        <div class="ligne" style="margin-top: 15px;"><span class="label">2 scores exacts les plus probables :</span></div>
+        <div class="ligne" style="margin-top: 15px;">
+            <span class="label">
+                {% if match.sport == "basket" %}2 marges de victoire les plus probables :{% else %}2 scores exacts les plus probables :{% endif %}
+            </span>
+        </div>
         <div class="score-box">
             {% for s in top_2_scores %}
             <div class="score-item">
@@ -181,10 +219,13 @@
         <h2>📝 J'ai parié ce match</h2>
         <form action="/resultat" method="post">
             <input type="hidden" name="analyse_id" value="{{ analyse_id }}">
+
             <label>Score final — {{ match.equipe1 }}</label>
             <input type="number" name="score_home" min="0" required>
+
             <label>Score final — {{ match.equipe2 }}</label>
             <input type="number" name="score_away" min="0" required>
+
             <label style="margin-top: 15px;">Marchés joués :</label>
             {% for r in recommandations %}
             <label class="coche">
@@ -192,14 +233,18 @@
                 {{ r.marche }} — {{ r.niveau }}
             </label>
             {% endfor %}
+
             <input type="hidden" name="marches" id="marches_final">
+
             <button type="submit" onclick="collecterMarches()">Enregistrer le résultat</button>
         </form>
     </div>
+
     <script>
         function collecterMarches() {
-            const c = document.querySelectorAll('input[name="marches_check"]:checked');
-            document.getElementById("marches_final").value = Array.from(c).map(x => x.value).join("|");
+            const coches = document.querySelectorAll('input[name="marches_check"]:checked');
+            const valeurs = Array.from(coches).map(c => c.value).join("|");
+            document.getElementById("marches_final").value = valeurs;
         }
     </script>
     {% endif %}
