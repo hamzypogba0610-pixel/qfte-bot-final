@@ -33,19 +33,14 @@ async def analyser(
         "volume": volume,
     }
 
-    _ = analyser_match(match)
+    resultat = analyser_match(match)
 
+    reco_principale = resultat.get("recommandation_finale", {})
+
+    # On duplique la reco principale en 3 niveaux (provisoire)
+    # pour conserver l'affichage à 3 recommandations
     recommandations = [
-        {
-            "niveau": "ELITE",
-            "marche": "1X2 - Domicile",
-            "selection": equipe1,
-            "proba": "58%",
-            "cote": cote_actuelle,
-            "ev": "+6.2%",
-            "stake": "1.5%",
-            "fiabilite": "0.82",
-        },
+        {**reco_principale, "niveau": "ELITE"},
         {
             "niveau": "PREMIUM",
             "marche": "Over/Under 2.5",
@@ -74,5 +69,7 @@ async def analyser(
         {
             "match": match,
             "recommandations": recommandations,
+            "decision": resultat.get("decision", "-"),
+            "message_discipline": resultat.get("message_discipline", ""),
         },
     )
