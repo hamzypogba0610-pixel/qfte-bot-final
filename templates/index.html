@@ -7,13 +7,15 @@
     <style>
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 15px; background: #0f0f0f; color: #eee; }
         h1 { color: #4ade80; text-align: center; }
-        h2 { color: #facc15; margin-top: 25px; font-size: 16px; }
-        label { display: block; margin-top: 12px; font-weight: bold; }
+        h2 { color: #facc15; margin-top: 25px; font-size: 16px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        label { display: block; margin-top: 12px; font-weight: bold; font-size: 14px; }
         input, select { width: 100%; padding: 10px; margin-top: 4px; border-radius: 6px; border: 1px solid #333; background: #1a1a1a; color: #eee; box-sizing: border-box; }
         button { margin-top: 20px; width: 100%; padding: 12px; background: #4ade80; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 16px; }
         .lien-dashboard { text-align: center; margin-top: 10px; }
         .lien-dashboard a { color: #60a5fa; text-decoration: none; }
-        .aide { color: #9ca3af; font-size: 12px; margin-top: 2px; }
+        .aide { color: #9ca3af; font-size: 12px; margin-top: 2px; font-weight: normal; }
+        .row { display: flex; gap: 8px; }
+        .row > div { flex: 1; }
     </style>
 </head>
 <body>
@@ -21,6 +23,7 @@
     <p class="lien-dashboard"><a href="/dashboard">📊 Voir le dashboard</a></p>
 
     <form action="/analyser" method="post">
+        <h2>🏟️ Match</h2>
         <label>Sport</label>
         <select name="sport">
             <option value="football">Football</option>
@@ -30,41 +33,54 @@
 
         <label>Compétition</label>
         <input type="text" name="competition" placeholder="Ex: Ligue 1" required>
-        <div class="aide">Impacte le total de buts attendu (ex: Bundesliga = 3.1 buts/m)</div>
+        <div class="aide">Impacte le total de buts attendu (ex: Bundesliga = 3.1)</div>
 
-        <label>Équipe / Joueur 1</label>
+        <label>Équipe / Joueur 1 (à domicile)</label>
         <input type="text" name="equipe1" required>
 
-        <label>Équipe / Joueur 2</label>
+        <label>Équipe / Joueur 2 (à l'extérieur)</label>
         <input type="text" name="equipe2" required>
 
-        <h2>📈 Forme récente</h2>
+        <h2>📊 Cotes 1X2 (les 2 équipes)</h2>
 
-        <label>Forme de {{ 'l\'équipe 1' }} : de -2 (très mauvaise) à +2 (excellente)</label>
-        <select name="forme1">
-            <option value="-2">-2 — Très mauvaise (0/5 matchs)</option>
-            <option value="-1">-1 — Mauvaise (1/5)</option>
-            <option value="0" selected>0 — Neutre (2-3/5)</option>
-            <option value="1">+1 — Bonne (4/5)</option>
-            <option value="2">+2 — Excellente (5/5)</option>
-        </select>
+        <label>Cote Équipe 1 — Ouverture / Fermeture</label>
+        <div class="row">
+            <div><input type="number" step="0.01" name="cote_ouv_1" placeholder="Ouverture" required></div>
+            <div><input type="number" step="0.01" name="cote_ferm_1" placeholder="Fermeture" required></div>
+        </div>
 
-        <label>Forme de l'équipe 2 : de -2 à +2</label>
-        <select name="forme2">
-            <option value="-2">-2 — Très mauvaise (0/5 matchs)</option>
-            <option value="-1">-1 — Mauvaise (1/5)</option>
-            <option value="0" selected>0 — Neutre (2-3/5)</option>
-            <option value="1">+1 — Bonne (4/5)</option>
-            <option value="2">+2 — Excellente (5/5)</option>
-        </select>
+        <label>Cote Équipe 2 — Ouverture / Fermeture</label>
+        <div class="row">
+            <div><input type="number" step="0.01" name="cote_ouv_2" placeholder="Ouverture" required></div>
+            <div><input type="number" step="0.01" name="cote_ferm_2" placeholder="Fermeture" required></div>
+        </div>
 
-        <h2>📊 Cotes du bookmaker</h2>
+        <h2>📈 Forme Équipe 1 (domicile)</h2>
 
-        <label>Cote 1X2 Domicile</label>
-        <input type="number" step="0.01" name="cote_ouverture" placeholder="Cote d'ouverture" required>
-        <input type="number" step="0.01" name="cote_actuelle" placeholder="Cote actuelle" required style="margin-top: 6px;">
+        <label>5 derniers matchs à domicile</label>
+        <input type="text" name="forme_dom_5" placeholder="Ex: V V N D V" required>
+        <div class="aide">V = Victoire, N = Nul, D = Défaite</div>
 
-        <label id="label_ah">Cote Handicap Asiatique -0.5 (Domicile)</label>
+        <label>5 derniers matchs globaux (toutes compétitions)</label>
+        <input type="text" name="forme_dom_glob_5" placeholder="Ex: V D V V N" required>
+
+        <h2>📉 Forme Équipe 2 (extérieur)</h2>
+
+        <label>5 derniers matchs à l'extérieur</label>
+        <input type="text" name="forme_ext_5" placeholder="Ex: D V N V D" required>
+
+        <label>5 derniers matchs globaux (toutes compétitions)</label>
+        <input type="text" name="forme_ext_glob_5" placeholder="Ex: N D V D N" required>
+
+        <h2>⚔️ Confrontations directes (H2H)</h2>
+
+        <label>5 derniers scores H2H (Équipe1-Équipe2)</label>
+        <input type="text" name="h2h_5" placeholder="Ex: 2-1,1-1,0-2,3-0,1-0" required>
+        <div class="aide">Séparés par des virgules</div>
+
+        <h2>🎯 Cotes des 3 marchés analysés</h2>
+
+        <label id="label_ah">Cote Handicap Asiatique -0.5</label>
         <input type="number" step="0.01" name="cote_ah" id="input_ah" placeholder="Ex: 1.90" required>
 
         <label id="label_over25">Cote Over 2.5</label>
@@ -89,31 +105,19 @@
             const lAh = document.getElementById("label_ah");
             const lOv = document.getElementById("label_over25");
             const lBt = document.getElementById("label_btts");
-            const iAh = document.getElementById("input_ah");
-            const iOv = document.getElementById("input_over25");
-            const iBt = document.getElementById("input_btts");
 
             if (sport === "basket") {
                 lAh.textContent = "Cote Spread -4.5 (Domicile)";
-                iAh.placeholder = "Ex: 1.90";
                 lOv.textContent = "Cote Total Points Over 180.5";
-                iOv.placeholder = "Ex: 1.90";
                 lBt.textContent = "Cote Money Line Domicile";
-                iBt.placeholder = "Ex: 1.75";
             } else if (sport === "tennis") {
                 lAh.textContent = "Cote Vainqueur Joueur 1";
-                iAh.placeholder = "Ex: 1.90";
                 lOv.textContent = "Cote Over 22.5 jeux";
-                iOv.placeholder = "Ex: 1.90";
                 lBt.textContent = "Cote Joueur 1 gagne 2-0";
-                iBt.placeholder = "Ex: 2.50";
             } else {
-                lAh.textContent = "Cote Handicap Asiatique -0.5 (Domicile)";
-                iAh.placeholder = "Ex: 1.90";
+                lAh.textContent = "Cote Handicap Asiatique -0.5";
                 lOv.textContent = "Cote Over 2.5";
-                iOv.placeholder = "Ex: 1.85";
                 lBt.textContent = "Cote BTTS Oui";
-                iBt.placeholder = "Ex: 1.80";
             }
         }
 
