@@ -87,6 +87,7 @@ async def analyser(
             "total_buts_comp": resultat.get("total_buts_comp", "-"),
             "contexte": resultat.get("contexte", {}),
             "modele_lambda": resultat.get("modele_lambda", "-"),
+            "signature": resultat.get("signature", {}),
         },
     )
 
@@ -109,9 +110,8 @@ async def dashboard(request: Request):
     roi = calculer_roi()
     historique = charger_historique()
     dernieres = list(reversed(historique[-20:]))
-
     return templates.TemplateResponse(
         request,
         "dashboard.html",
         {"stats": stats, "roi": roi, "dernieres": dernieres},
-)
+        )
