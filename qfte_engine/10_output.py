@@ -1,16 +1,19 @@
 def formater_recommandation(data):
-    match = data.get("match", {})
+    marches = data.get("marches", [])
+    marches_tries = sorted(marches, key=lambda m: m.get("ev_net", 0), reverse=True)
 
-    reco = {
-        "niveau": data.get("niveau", "AVOID"),
-        "marche": "1X2 - Domicile",
-        "selection": match.get("equipe1", "-"),
-        "proba": f"{round(float(data.get('proba_calibree', 0.0)) * 100, 1)}%",
-        "cote": data.get("cote", "-"),
-        "ev": f"{round(float(data.get('ev_net', 0.0)) * 100, 2)}%",
-        "stake": f"{data.get('stake', 0.0)}%",
-        "fiabilite": str(data.get("fiabilite", 0.0)),
-    }
+    recos = []
+    for m in marches_tries[:3]:
+        recos.append({
+            "niveau": m.get("niveau", "AVOID"),
+            "marche": m.get("nom", "-"),
+            "selection": m.get("selection", "-"),
+            "proba": f"{round(float(m.get('proba_calibree', 0.0)) * 100, 1)}%",
+            "cote": m.get("cote", "-"),
+            "ev": f"{round(float(m.get('ev_net', 0.0)) * 100, 2)}%",
+            "stake": f"{m.get('stake', 0.0)}%",
+            "fiabilite": str(m.get("fiabilite", 0.0)),
+        })
 
-    data["recommandation_finale"] = reco
+    data["recommandations"] = recos
     return data
