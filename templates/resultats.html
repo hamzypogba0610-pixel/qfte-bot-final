@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QFTE V23.0 – Résultats</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: 20px auto; padding: 15px; background: #0f0f0f; color: #eee; }
+        h1 { color: #4ade80; text-align: center; }
+        h2 { color: #facc15; margin-top: 25px; }
+        .match { background: #1a1a1a; padding: 12px; border-radius: 8px; margin-bottom: 20px; }
+        .reco { background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #4ade80; }
+        .reco.premium { border-left-color: #facc15; }
+        .reco.good { border-left-color: #60a5fa; }
+        .ligne { margin: 6px 0; }
+        .label { color: #9ca3af; }
+        .back { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #4ade80; color: #000; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🦁 Résultats QFTE V23.0</h1>
+
+    <div class="match">
+        <h2>Match analysé</h2>
+        <div class="ligne"><span class="label">Sport :</span> {{ match.sport }}</div>
+        <div class="ligne"><span class="label">Compétition :</span> {{ match.competition }}</div>
+        <div class="ligne"><span class="label">Rencontre :</span> {{ match.equipe1 }} vs {{ match.equipe2 }}</div>
+    </div>
+
+    <h2>Recommandations</h2>
+    {% for r in recommandations %}
+    <div class="reco {{ r.niveau|lower }}">
+        <div class="ligne"><strong>#{{ loop.index }} — {{ r.niveau }}</strong></div>
+        <div class="ligne"><span class="label">Marché :</span> {{ r.marche }}</div>
+        <div class="ligne"><span class="label">Sélection :</span> {{ r.selection }}</div>
+        <div class="ligne"><span class="label">Proba calibrée :</span> {{ r.proba }}</div>
+        <div class="ligne"><span class="label">Cote :</span> {{ r.cote }}</div>
+        <div class="ligne"><span class="label">EV net :</span> {{ r.ev }}</div>
+        <div class="ligne"><span class="label">Stake :</span> {{ r.stake }}</div>
+        <div class="ligne"><span class="label">Fiabilité :</span> {{ r.fiabilite }}</div>
+    </div>
+    {% endfor %}
+
+    <a href="/" class="back">← Nouvelle analyse</a>
+</body>
+</html>
