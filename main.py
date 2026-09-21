@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 from qfte_engine.pipeline import analyser_match
 from qfte_engine.historique import (
     charger_historique,
@@ -26,28 +25,40 @@ async def analyser(
     competition: str = Form(...),
     equipe1: str = Form(...),
     equipe2: str = Form(...),
-    forme1: int = Form(0),
-    forme2: int = Form(0),
-    cote_ouverture: float = Form(...),
-    cote_actuelle: float = Form(...),
+    cote_ouv_1: float = Form(...),
+    cote_ferm_1: float = Form(...),
+    cote_ouv_2: float = Form(...),
+    cote_ferm_2: float = Form(...),
+    forme_dom_5: str = Form(""),
+    forme_dom_glob_5: str = Form(""),
+    forme_ext_5: str = Form(""),
+    forme_ext_glob_5: str = Form(""),
+    h2h_5: str = Form(""),
     cote_ah: float = Form(...),
     cote_over25: float = Form(...),
     cote_btts: float = Form(...),
     volume: int = Form(...),
 ):
+    # On réutilise cote_ouv_1 / cote_ferm_1 comme cotes principales
+    # pour rester compatible avec le moteur existant
     match = {
         "sport": sport,
         "competition": competition,
         "equipe1": equipe1,
         "equipe2": equipe2,
-        "forme1": forme1,
-        "forme2": forme2,
-        "cote_ouverture": cote_ouverture,
-        "cote_actuelle": cote_actuelle,
+        "cote_ouverture": cote_ouv_1,
+        "cote_actuelle": cote_ferm_1,
+        "cote_ouv_2": cote_ouv_2,
+        "cote_ferm_2": cote_ferm_2,
         "cote_ah": cote_ah,
         "cote_over25": cote_over25,
         "cote_btts": cote_btts,
         "volume": volume,
+        "forme_dom_5": forme_dom_5,
+        "forme_dom_glob_5": forme_dom_glob_5,
+        "forme_ext_5": forme_ext_5,
+        "forme_ext_glob_5": forme_ext_glob_5,
+        "h2h_5": h2h_5,
     }
 
     resultat = analyser_match(match)
@@ -68,6 +79,7 @@ async def analyser(
             "analyse_id": resultat.get("analyse_id", ""),
             "marge_estimee": resultat.get("marge_estimee", "-"),
             "total_buts_comp": resultat.get("total_buts_comp", "-"),
+            "contexte": resultat.get("contexte", {}),
         },
     )
 
