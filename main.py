@@ -21,6 +21,9 @@ async def analyser(
     equipe2: str = Form(...),
     cote_ouverture: float = Form(...),
     cote_actuelle: float = Form(...),
+    cote_ah: float = Form(...),
+    cote_over25: float = Form(...),
+    cote_btts: float = Form(...),
     volume: int = Form(...),
 ):
     match = {
@@ -30,6 +33,9 @@ async def analyser(
         "equipe2": equipe2,
         "cote_ouverture": cote_ouverture,
         "cote_actuelle": cote_actuelle,
+        "cote_ah": cote_ah,
+        "cote_over25": cote_over25,
+        "cote_btts": cote_btts,
         "volume": volume,
     }
 
@@ -48,4 +54,4 @@ async def analyser(
             "lambda_home": resultat.get("lambda_home", "-"),
             "lambda_away": resultat.get("lambda_away", "-"),
         },
-    )
+        )
