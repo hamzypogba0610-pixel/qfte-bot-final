@@ -9,6 +9,9 @@ def detecter_value(data):
 
         ev_net = (proba_calibree * cote) - 1
 
+        # Plafond réaliste (un vrai EV dépasse rarement ±10%)
+        ev_net = max(-0.10, min(0.10, ev_net))
+
         if ev_net >= 0.05 and fiabilite >= 0.80:
             niveau = "ELITE"
             stake = 1.5
