@@ -30,17 +30,19 @@ async def analyser(
     cote_ouv_2: float = Form(...),
     cote_ferm_2: float = Form(...),
     forme_dom_5: str = Form(""),
+    scores_dom_5: str = Form(""),
     forme_dom_glob_5: str = Form(""),
+    scores_dom_glob_5: str = Form(""),
     forme_ext_5: str = Form(""),
+    scores_ext_5: str = Form(""),
     forme_ext_glob_5: str = Form(""),
+    scores_ext_glob_5: str = Form(""),
     h2h_5: str = Form(""),
     cote_ah: float = Form(...),
     cote_over25: float = Form(...),
     cote_btts: float = Form(...),
     volume: int = Form(...),
 ):
-    # On réutilise cote_ouv_1 / cote_ferm_1 comme cotes principales
-    # pour rester compatible avec le moteur existant
     match = {
         "sport": sport,
         "competition": competition,
@@ -55,9 +57,13 @@ async def analyser(
         "cote_btts": cote_btts,
         "volume": volume,
         "forme_dom_5": forme_dom_5,
+        "scores_dom_5": scores_dom_5,
         "forme_dom_glob_5": forme_dom_glob_5,
+        "scores_dom_glob_5": scores_dom_glob_5,
         "forme_ext_5": forme_ext_5,
+        "scores_ext_5": scores_ext_5,
         "forme_ext_glob_5": forme_ext_glob_5,
+        "scores_ext_glob_5": scores_ext_glob_5,
         "h2h_5": h2h_5,
     }
 
@@ -80,6 +86,7 @@ async def analyser(
             "marge_estimee": resultat.get("marge_estimee", "-"),
             "total_buts_comp": resultat.get("total_buts_comp", "-"),
             "contexte": resultat.get("contexte", {}),
+            "modele_lambda": resultat.get("modele_lambda", "-"),
         },
     )
 
@@ -106,9 +113,5 @@ async def dashboard(request: Request):
     return templates.TemplateResponse(
         request,
         "dashboard.html",
-        {
-            "stats": stats,
-            "roi": roi,
-            "dernieres": dernieres,
-        },
-    )
+        {"stats": stats, "roi": roi, "dernieres": dernieres},
+)
