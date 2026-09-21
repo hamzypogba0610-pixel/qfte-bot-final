@@ -7,6 +7,7 @@
     <style>
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 15px; background: #0f0f0f; color: #eee; }
         h1 { color: #4ade80; text-align: center; }
+        h2 { color: #facc15; margin-top: 25px; font-size: 16px; }
         label { display: block; margin-top: 12px; font-weight: bold; }
         input, select { width: 100%; padding: 10px; margin-top: 4px; border-radius: 6px; border: 1px solid #333; background: #1a1a1a; color: #eee; box-sizing: border-box; }
         button { margin-top: 20px; width: 100%; padding: 12px; background: #4ade80; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 16px; }
@@ -32,11 +33,22 @@
         <label>Équipe / Joueur 2</label>
         <input type="text" name="equipe2" required>
 
-        <label>Cote ouverture (1)</label>
-        <input type="number" step="0.01" name="cote_ouverture" required>
+        <h2>📊 Cotes du bookmaker</h2>
 
-        <label>Cote actuelle (1)</label>
-        <input type="number" step="0.01" name="cote_actuelle" required>
+        <label>Cote 1X2 Domicile</label>
+        <input type="number" step="0.01" name="cote_ouverture" placeholder="Cote d'ouverture" required>
+        <input type="number" step="0.01" name="cote_actuelle" placeholder="Cote actuelle" required style="margin-top: 6px;">
+
+        <label>Cote Handicap Asiatique -0.5 (Domicile)</label>
+        <input type="number" step="0.01" name="cote_ah" placeholder="Ex: 1.90" required>
+
+        <label>Cote Over 2.5</label>
+        <input type="number" step="0.01" name="cote_over25" placeholder="Ex: 1.85" required>
+
+        <label>Cote BTTS Oui</label>
+        <input type="number" step="0.01" name="cote_btts" placeholder="Ex: 1.80" required>
+
+        <h2>💰 Marché</h2>
 
         <label>Volume de paris (€)</label>
         <input type="number" name="volume" value="50000" required>
@@ -44,4 +56,4 @@
         <button type="submit">Analyser</button>
     </form>
 </body>
-          </html>
+    </html>
