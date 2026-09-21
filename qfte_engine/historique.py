@@ -30,7 +30,6 @@ def sauvegarder_analyse(match, resultat):
     recos = resultat.get("recommandations", [])
     reco_principale = recos[0] if recos else {}
 
-    # ID unique basé sur le timestamp
     id_unique = datetime.now().strftime("%Y%m%d%H%M%S%f")
 
     entree = {
@@ -41,8 +40,10 @@ def sauvegarder_analyse(match, resultat):
         "equipe1": match.get("equipe1", "-"),
         "equipe2": match.get("equipe2", "-"),
         "cotes": {
-            "ouverture": match.get("cote_ouverture"),
-            "actuelle": match.get("cote_actuelle"),
+            "ouv_1": match.get("cote_ouv_1"),
+            "ferm_1": match.get("cote_ferm_1"),
+            "ouv_2": match.get("cote_ouv_2"),
+            "ferm_2": match.get("cote_ferm_2"),
             "ah": match.get("cote_ah"),
             "over25": match.get("cote_over25"),
             "btts": match.get("cote_btts"),
@@ -52,7 +53,7 @@ def sauvegarder_analyse(match, resultat):
         "meilleure_reco": reco_principale,
         "lambda_home": resultat.get("lambda_home"),
         "lambda_away": resultat.get("lambda_away"),
-        "resultat": None,  # rempli plus tard
+        "resultat": None,
     }
 
     historique.append(entree)
@@ -61,20 +62,27 @@ def sauvegarder_analyse(match, resultat):
 
 
 def _pari_gagne(marche, selection, score_home, score_away):
-    """Retourne True si le pari est gagné selon le score final."""
     total = score_home + score_away
 
     if "Handicap" in marche:
-        # HA -0.5 Domicile : l'équipe 1 doit gagner
         return score_home > score_away
 
     if "Over" in marche and "2.5" in marche:
-        # Over 2.5 : total buts > 2.5
         return total > 2.5
 
     if "BTTS" in marche:
-        # Les deux équipes marquent
         return score_home >= 1 and score_away >= 1
+
+    # Basket
+    if "Money Line" in marche:
+        return score_home > score_away
+
+    if "Spread" in marche:
+        # Spread -4.5 : équipe 1 doit gagner par 5+
+        return (score_home - score_away) > 4.5
+
+    if "Total Points" in marche:
+        return total > 180.5
 
     return False
 
@@ -88,13 +96,13 @@ def enregistrer_resultat(id_unique, score_home, score_away, marches_joues):
             for reco in h.get("recommandations", []):
                 marche = reco.get("marche", "")
                 if marche in marches_joues:
-                    gagne = _pari_gagne(marche, reco.get("selection", ""), score_home, score_away)
+                    gagne = _pari_gagne(
+                        marche, reco.get("selection", ""), score_home, score_away
+                    )
                     stake_pct = float(str(reco.get("stake", "0")).replace("%", "") or 0)
                     cote = float(reco.get("cote", 1.0))
-
                     mise = BANKROLL_DEPART * (stake_pct / 100)
                     gain = mise * (cote - 1) if gagne else -mise
-
                     paris.append({
                         "marche": marche,
                         "cote": cote,
@@ -118,7 +126,6 @@ def enregistrer_resultat(id_unique, score_home, score_away, marches_joues):
 
 def calculer_roi():
     historique = charger_historique()
-
     total_paris = 0
     paris_gagnes = 0
     paris_perdus = 0
@@ -197,24 +204,19 @@ def calculer_statistiques():
 
     if ratio_attaques < 0.05 and total >= 10:
         stats["niveau_drift"] = "CRITIQUE"
-        stats["message_drift"] = (
-            "Aucune opportunité détectée sur les 10 dernières analyses."
-        )
+        stats["message_drift"] = "Aucune opportunité détectée sur les 10 dernières analyses."
     elif ratio_attaques < 0.10 and total >= 10:
         stats["niveau_drift"] = "SURVEILLANCE"
-        stats["message_drift"] = (
-            "Peu d'opportunités détectées récemment. Vérifier la calibration."
-        )
+        stats["message_drift"] = "Peu d'opportunités détectées récemment. Vérifier la calibration."
 
     return stats
-
 
 
 def recuperer_donnees_apprentissage():
     """
     Extrait les paires (proba_prédite, résultat) pour chaque marché
     à partir des analyses passées ayant un résultat enregistré.
-    Utilisé pour entraîner les calibrateurs.
+    Utilisé pour entraîner les calibrateurs (Platt, Beta, Isotonic).
     """
     historique = charger_historique()
     data = {}
