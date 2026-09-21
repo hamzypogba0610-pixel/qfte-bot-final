@@ -22,6 +22,19 @@
 </head>
 <body>
     <h1>🦁 Résultats QFTE V23.0</h1>
+    {% if validation %}
+<div class="validation-box validation-{{ validation.niveau|lower }}">
+    <div class="validation-title">{{ validation.message }}</div>
+    <div class="validation-score">Score de fiabilité : {{ validation.score }}/100</div>
+    {% if validation.alertes %}
+    <ul class="validation-alertes">
+        {% for a in validation.alertes %}
+        <li>{{ a }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{% endif %}
 
     <div class="match">
         <h2>Match analysé</h2>
