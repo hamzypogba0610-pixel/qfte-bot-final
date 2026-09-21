@@ -12,29 +12,48 @@
         .reco { background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #4ade80; }
         .reco.premium { border-left-color: #facc15; }
         .reco.good { border-left-color: #60a5fa; }
+        .reco.avoid { border-left-color: #6b7280; }
+        .reco.surveillance { border-left-color: #a78bfa; }
         .ligne { margin: 6px 0; }
         .label { color: #9ca3af; }
         .score-box { display: flex; gap: 10px; flex-wrap: wrap; }
         .score-item { background: #1a1a1a; padding: 12px 18px; border-radius: 8px; border-left: 4px solid #a78bfa; }
         .score-val { font-size: 22px; font-weight: bold; color: #a78bfa; }
         .back { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #4ade80; color: #000; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        .validation-box { padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #6b7280; background: #1a1a1a; }
+        .validation-ok { border-left-color: #4ade80; }
+        .validation-prudence { border-left-color: #facc15; }
+        .validation-danger { border-left-color: #ef4444; }
+        .validation-title { font-weight: bold; margin-bottom: 6px; }
+        .validation-ok .validation-title { color: #4ade80; }
+        .validation-prudence .validation-title { color: #facc15; }
+        .validation-danger .validation-title { color: #ef4444; }
+        .validation-score { color: #9ca3af; font-size: 13px; margin-bottom: 8px; }
+        .validation-alertes { margin: 8px 0 0 0; padding-left: 20px; font-size: 13px; color: #e5e7eb; }
+        .validation-alertes li { margin-bottom: 4px; }
+        .resultat-box { background: #1a1a1a; padding: 15px; border-radius: 8px; margin-top: 25px; border-left: 5px solid #60a5fa; }
+        .resultat-box label { display: block; margin-top: 10px; }
+        .resultat-box input[type="number"] { width: 70px; padding: 8px; border-radius: 6px; border: 1px solid #333; background: #0f0f0f; color: #eee; }
+        .resultat-box .coche { margin-top: 10px; display: block; }
+        .resultat-box button { margin-top: 15px; width: 100%; padding: 12px; background: #60a5fa; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 15px; }
     </style>
 </head>
 <body>
     <h1>🦁 Résultats QFTE V23.0</h1>
+
     {% if validation %}
-<div class="validation-box validation-{{ validation.niveau|lower }}">
-    <div class="validation-title">{{ validation.message }}</div>
-    <div class="validation-score">Score de fiabilité : {{ validation.score }}/100</div>
-    {% if validation.alertes %}
-    <ul class="validation-alertes">
-        {% for a in validation.alertes %}
-        <li>{{ a }}</li>
-        {% endfor %}
-    </ul>
+    <div class="validation-box validation-{{ validation.niveau|lower }}">
+        <div class="validation-title">{{ validation.message }}</div>
+        <div class="validation-score">Score de fiabilité : {{ validation.score }}/100</div>
+        {% if validation.alertes %}
+        <ul class="validation-alertes">
+            {% for a in validation.alertes %}
+            <li>{{ a }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
     {% endif %}
-</div>
-{% endif %}
 
     <div class="match">
         <h2>Match analysé</h2>
@@ -86,6 +105,42 @@
     </div>
     {% endfor %}
 
+    {% if analyse_id %}
+    <div class="resultat-box">
+        <h2>📝 J'ai parié ce match</h2>
+        <form action="/resultat" method="post">
+            <input type="hidden" name="analyse_id" value="{{ analyse_id }}">
+
+            <label>Score final — {{ match.equipe1 }}</label>
+            <input type="number" name="score_home" min="0" required>
+
+            <label>Score final — {{ match.equipe2 }}</label>
+            <input type="number" name="score_away" min="0" required>
+
+            <label style="margin-top: 15px;">Marchés joués :</label>
+            {% for r in recommandations %}
+            <label class="coche">
+                <input type="checkbox" name="marches_check" value="{{ r.marche }}" data-marche="{{ r.marche }}">
+                {{ r.marche }} — {{ r.niveau }}
+            </label>
+            {% endfor %}
+
+            <input type="hidden" name="marches" id="marches_final">
+
+            <button type="submit" onclick="collecterMarches()">Enregistrer le résultat</button>
+        </form>
+    </div>
+
+    <script>
+        function collecterMarches() {
+            const coches = document.querySelectorAll('input[name="marches_check"]:checked');
+            const valeurs = Array.from(coches).map(c => c.value).join("|");
+            document.getElementById("marches_final").value = valeurs;
+        }
+    </script>
+    {% endif %}
+
     <a href="/" class="back">← Nouvelle analyse</a>
+    <a href="/dashboard" class="back" style="background:#60a5fa; margin-left:8px;">📊 Dashboard</a>
 </body>
             </html>
