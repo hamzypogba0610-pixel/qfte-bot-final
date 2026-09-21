@@ -5,7 +5,23 @@ def poisson(k, lam):
     return (lam ** k) * math.exp(-lam) / math.factorial(k)
 
 
-def correction_dixon_coles(i, j, lh, la, rho=-0.10):
+def rho_adaptatif(lh, la):
+    """
+    ρ Dixon-Coles adaptatif selon le total de buts attendu :
+    - Match défensif (total < 2.3) → ρ = -0.15 (correction forte)
+    - Match moyen    (total 2.3-3.0) → ρ = -0.10 (valeur standard)
+    - Match offensif (total > 3.0) → ρ = -0.05 (correction faible)
+    """
+    total = lh + la
+    if total < 2.3:
+        return -0.15
+    elif total <= 3.0:
+        return -0.10
+    else:
+        return -0.05
+
+
+def correction_dixon_coles(i, j, lh, la, rho):
     if i == 0 and j == 0:
         return 1 - lh * la * rho
     elif i == 0 and j == 1:
@@ -17,7 +33,7 @@ def correction_dixon_coles(i, j, lh, la, rho=-0.10):
     return 1.0
 
 
-def proba_score(i, j, lh, la, rho=-0.10):
+def proba_score(i, j, lh, la, rho):
     p = poisson(i, lh) * poisson(j, la)
     tau = correction_dixon_coles(i, j, lh, la, rho)
     return p * tau
@@ -38,20 +54,25 @@ def predire_scores(data):
     lambda_home = float(data.get("lambda_home", 1.4))
     lambda_away = float(data.get("lambda_away", 1.3))
 
+    rho = rho_adaptatif(lambda_home, lambda_away)
+    data["rho_utilise"] = rho
+
     scores = []
     for i in range(0, 6):
         for j in range(0, 6):
-            p = proba_score(i, j, lambda_home, lambda_away)
+            p = proba_score(i, j, lambda_home, lambda_away, rho)
             scores.append({"score": f"{i}-{j}", "proba": round(p, 4)})
     scores.sort(key=lambda s: s["proba"], reverse=True)
     top_2_scores = scores[:2]
 
     lh_ht = lambda_home * 0.45
     la_ht = lambda_away * 0.45
+    rho_ht = rho_adaptatif(lh_ht, la_ht)
+
     scores_ht = []
     for i in range(0, 4):
         for j in range(0, 4):
-            p = proba_score(i, j, lh_ht, la_ht)
+            p = proba_score(i, j, lh_ht, la_ht, rho_ht)
             scores_ht.append({"score": f"{i}-{j}", "proba": round(p, 4)})
     scores_ht.sort(key=lambda s: s["proba"], reverse=True)
     top_ht_score = scores_ht[0]
@@ -71,13 +92,8 @@ def predire_scores(data):
 
 
 def _scores_basket(data):
-    """
-    Pour le basket : on affiche des marges de victoire probables
-    et une projection du score total.
-    """
     ecart_moyen = float(data.get("lambda_home", 0))
 
-    # Marges de victoire les plus probables (autour de l'écart moyen)
     marges = []
     for m in range(int(ecart_moyen) - 4, int(ecart_moyen) + 5):
         p = norm_cdf(m + 0.5, ecart_moyen, 12) - norm_cdf(m - 0.5, ecart_moyen, 12)
@@ -86,17 +102,13 @@ def _scores_basket(data):
     marges.sort(key=lambda x: x["proba"], reverse=True)
     top_2_scores = marges[:2]
 
-    # Score projeté à la mi-temps (~50% des points)
     total_estime = 180
     score_ht = total_estime / 2
-    if ecart_moyen >= 0:
-        proj_ht = f"{(score_ht + ecart_moyen/2):.0f}-{(score_ht - ecart_moyen/2):.0f}"
-    else:
-        proj_ht = f"{(score_ht + ecart_moyen/2):.0f}-{(score_ht - ecart_moyen/2):.0f}"
+    proj_ht = f"{(score_ht + ecart_moyen/2):.0f}-{(score_ht - ecart_moyen/2):.0f}"
 
     top_ht_score = {
         "score": proj_ht,
-        "proba": 0.15,  # proba indicative
+        "proba": 0.15,
     }
 
     marches = data.get("marches", [])
