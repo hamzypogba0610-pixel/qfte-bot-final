@@ -33,7 +33,6 @@
 
         <label>Compétition</label>
         <input type="text" name="competition" placeholder="Ex: Ligue 1" required>
-        <div class="aide">Impacte le total de buts attendu (ex: Bundesliga = 3.1)</div>
 
         <label>Équipe / Joueur 1 (à domicile)</label>
         <input type="text" name="equipe1" required>
@@ -42,55 +41,61 @@
         <input type="text" name="equipe2" required>
 
         <h2>📊 Cotes 1X2 (les 2 équipes)</h2>
-
         <label>Cote Équipe 1 — Ouverture / Fermeture</label>
         <div class="row">
-            <div><input type="number" step="0.01" name="cote_ouv_1" placeholder="Ouverture" required></div>
-            <div><input type="number" step="0.01" name="cote_ferm_1" placeholder="Fermeture" required></div>
+            <div><input type="number" step="0.01" name="cote_ouv_1" placeholder="Ouv." required></div>
+            <div><input type="number" step="0.01" name="cote_ferm_1" placeholder="Ferm." required></div>
         </div>
-
         <label>Cote Équipe 2 — Ouverture / Fermeture</label>
         <div class="row">
-            <div><input type="number" step="0.01" name="cote_ouv_2" placeholder="Ouverture" required></div>
-            <div><input type="number" step="0.01" name="cote_ferm_2" placeholder="Fermeture" required></div>
+            <div><input type="number" step="0.01" name="cote_ouv_2" placeholder="Ouv." required></div>
+            <div><input type="number" step="0.01" name="cote_ferm_2" placeholder="Ferm." required></div>
         </div>
 
-        <h2>📈 Forme Équipe 1 (domicile)</h2>
+        <h2>📈 Équipe 1 — à domicile</h2>
 
-        <label>5 derniers matchs à domicile</label>
+        <label>5 derniers résultats à domicile (V/N/D)</label>
         <input type="text" name="forme_dom_5" placeholder="Ex: V V N D V" required>
-        <div class="aide">V = Victoire, N = Nul, D = Défaite</div>
 
-        <label>5 derniers matchs globaux (toutes compétitions)</label>
+        <label>5 derniers scores à domicile</label>
+        <input type="text" name="scores_dom_5" placeholder="Ex: 2-1,1-0,3-2,0-0,1-1" required>
+        <div class="aide">Format : buts_pour-buts_contre, séparés par des virgules</div>
+
+        <label>5 derniers résultats globaux (V/N/D)</label>
         <input type="text" name="forme_dom_glob_5" placeholder="Ex: V D V V N" required>
 
-        <h2>📉 Forme Équipe 2 (extérieur)</h2>
+        <label>5 derniers scores globaux</label>
+        <input type="text" name="scores_dom_glob_5" placeholder="Ex: 2-1,1-2,3-0,1-1,0-1" required>
 
-        <label>5 derniers matchs à l'extérieur</label>
+        <h2>📉 Équipe 2 — à l'extérieur</h2>
+
+        <label>5 derniers résultats à l'extérieur (V/N/D)</label>
         <input type="text" name="forme_ext_5" placeholder="Ex: D V N V D" required>
 
-        <label>5 derniers matchs globaux (toutes compétitions)</label>
+        <label>5 derniers scores à l'extérieur</label>
+        <input type="text" name="scores_ext_5" placeholder="Ex: 1-2,0-1,2-3,1-1,0-0" required>
+
+        <label>5 derniers résultats globaux (V/N/D)</label>
         <input type="text" name="forme_ext_glob_5" placeholder="Ex: N D V D N" required>
 
-        <h2>⚔️ Confrontations directes (H2H)</h2>
+        <label>5 derniers scores globaux</label>
+        <input type="text" name="scores_ext_glob_5" placeholder="Ex: 1-2,0-1,2-1,1-3,1-1" required>
 
+        <h2>⚔️ Confrontations directes (H2H)</h2>
         <label>5 derniers scores H2H (Équipe1-Équipe2)</label>
         <input type="text" name="h2h_5" placeholder="Ex: 2-1,1-1,0-2,3-0,1-0" required>
-        <div class="aide">Séparés par des virgules</div>
 
         <h2>🎯 Cotes des 3 marchés analysés</h2>
-
         <label id="label_ah">Cote Handicap Asiatique -0.5</label>
-        <input type="number" step="0.01" name="cote_ah" id="input_ah" placeholder="Ex: 1.90" required>
+        <input type="number" step="0.01" name="cote_ah" id="input_ah" required>
 
         <label id="label_over25">Cote Over 2.5</label>
-        <input type="number" step="0.01" name="cote_over25" id="input_over25" placeholder="Ex: 1.85" required>
+        <input type="number" step="0.01" name="cote_over25" id="input_over25" required>
 
         <label id="label_btts">Cote BTTS Oui</label>
-        <input type="number" step="0.01" name="cote_btts" id="input_btts" placeholder="Ex: 1.80" required>
+        <input type="number" step="0.01" name="cote_btts" id="input_btts" required>
 
         <h2>💰 Marché</h2>
-
         <label>Volume de paris (€)</label>
         <input type="number" name="volume" value="50000" required>
 
@@ -99,13 +104,11 @@
 
     <script>
         const selectSport = document.querySelector('select[name="sport"]');
-
         function majLabels() {
             const sport = selectSport.value;
             const lAh = document.getElementById("label_ah");
             const lOv = document.getElementById("label_over25");
             const lBt = document.getElementById("label_btts");
-
             if (sport === "basket") {
                 lAh.textContent = "Cote Spread -4.5 (Domicile)";
                 lOv.textContent = "Cote Total Points Over 180.5";
@@ -120,7 +123,6 @@
                 lBt.textContent = "Cote BTTS Oui";
             }
         }
-
         selectSport.addEventListener("change", majLabels);
         majLabels();
     </script>
