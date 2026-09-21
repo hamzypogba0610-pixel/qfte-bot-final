@@ -26,6 +26,11 @@
         <div class="ligne"><span class="label">Compétition :</span> {{ match.competition }}</div>
         <div class="ligne"><span class="label">Rencontre :</span> {{ match.equipe1 }} vs {{ match.equipe2 }}</div>
     </div>
+    <div class="match">
+    <h2>Décision finale</h2>
+    <div class="ligne"><strong>{{ decision }}</strong></div>
+    <div class="ligne"><span class="label">{{ message_discipline }}</span></div>
+    </div>
 
     <h2>Recommandations</h2>
     {% for r in recommandations %}
