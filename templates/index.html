@@ -11,11 +11,13 @@
         label { display: block; margin-top: 12px; font-weight: bold; }
         input, select { width: 100%; padding: 10px; margin-top: 4px; border-radius: 6px; border: 1px solid #333; background: #1a1a1a; color: #eee; box-sizing: border-box; }
         button { margin-top: 20px; width: 100%; padding: 12px; background: #4ade80; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 16px; }
+        .lien-dashboard { text-align: center; margin-top: 10px; }
+        .lien-dashboard a { color: #60a5fa; text-decoration: none; }
     </style>
 </head>
 <body>
     <h1>🦁 QFTE V23.0</h1>
-    <p style="text-align:center;"><a href="/dashboard" style="color:#60a5fa;">📊 Voir le dashboard</a></p>
+    <p class="lien-dashboard"><a href="/dashboard">📊 Voir le dashboard</a></p>
 
     <form action="/analyser" method="post">
         <label>Sport</label>
@@ -40,14 +42,14 @@
         <input type="number" step="0.01" name="cote_ouverture" placeholder="Cote d'ouverture" required>
         <input type="number" step="0.01" name="cote_actuelle" placeholder="Cote actuelle" required style="margin-top: 6px;">
 
-        <label>Cote Handicap Asiatique -0.5 (Domicile)</label>
-        <input type="number" step="0.01" name="cote_ah" placeholder="Ex: 1.90" required>
+        <label id="label_ah">Cote Handicap Asiatique -0.5 (Domicile)</label>
+        <input type="number" step="0.01" name="cote_ah" id="input_ah" placeholder="Ex: 1.90" required>
 
-        <label>Cote Over 2.5</label>
-        <input type="number" step="0.01" name="cote_over25" placeholder="Ex: 1.85" required>
+        <label id="label_over25">Cote Over 2.5</label>
+        <input type="number" step="0.01" name="cote_over25" id="input_over25" placeholder="Ex: 1.85" required>
 
-        <label>Cote BTTS Oui</label>
-        <input type="number" step="0.01" name="cote_btts" placeholder="Ex: 1.80" required>
+        <label id="label_btts">Cote BTTS Oui</label>
+        <input type="number" step="0.01" name="cote_btts" id="input_btts" placeholder="Ex: 1.80" required>
 
         <h2>💰 Marché</h2>
 
@@ -56,5 +58,45 @@
 
         <button type="submit">Analyser</button>
     </form>
+
+    <script>
+        const selectSport = document.querySelector('select[name="sport"]');
+
+        function majLabels() {
+            const sport = selectSport.value;
+            const lAh = document.getElementById("label_ah");
+            const lOv = document.getElementById("label_over25");
+            const lBt = document.getElementById("label_btts");
+            const iAh = document.getElementById("input_ah");
+            const iOv = document.getElementById("input_over25");
+            const iBt = document.getElementById("input_btts");
+
+            if (sport === "basket") {
+                lAh.textContent = "Cote Spread -4.5 (Domicile)";
+                iAh.placeholder = "Ex: 1.90";
+                lOv.textContent = "Cote Total Points Over 180.5";
+                iOv.placeholder = "Ex: 1.90";
+                lBt.textContent = "Cote Money Line Domicile";
+                iBt.placeholder = "Ex: 1.75";
+            } else if (sport === "tennis") {
+                lAh.textContent = "Cote Vainqueur Joueur 1";
+                iAh.placeholder = "Ex: 1.90";
+                lOv.textContent = "Cote Over 22.5 jeux";
+                iOv.placeholder = "Ex: 1.90";
+                lBt.textContent = "Cote Joueur 1 gagne 2-0";
+                iBt.placeholder = "Ex: 2.50";
+            } else {
+                lAh.textContent = "Cote Handicap Asiatique -0.5 (Domicile)";
+                iAh.placeholder = "Ex: 1.90";
+                lOv.textContent = "Cote Over 2.5";
+                iOv.placeholder = "Ex: 1.85";
+                lBt.textContent = "Cote BTTS Oui";
+                iBt.placeholder = "Ex: 1.80";
+            }
+        }
+
+        selectSport.addEventListener("change", majLabels);
+        majLabels();
+    </script>
 </body>
-    </html>
+            </html>
