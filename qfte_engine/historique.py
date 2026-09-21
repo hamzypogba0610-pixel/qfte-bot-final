@@ -207,3 +207,43 @@ def calculer_statistiques():
         )
 
     return stats
+
+
+
+def recuperer_donnees_apprentissage():
+    """
+    Extrait les paires (proba_prédite, résultat) pour chaque marché
+    à partir des analyses passées ayant un résultat enregistré.
+    Utilisé pour entraîner les calibrateurs.
+    """
+    historique = charger_historique()
+    data = {}
+
+    for h in historique:
+        res = h.get("resultat")
+        if not res:
+            continue
+
+        score_h = res.get("score_home", 0)
+        score_a = res.get("score_away", 0)
+
+        for reco in h.get("recommandations", []):
+            marche = reco.get("marche", "")
+            proba_str = str(reco.get("proba", "0%")).replace("%", "").strip()
+            try:
+                proba = float(proba_str) / 100
+            except ValueError:
+                continue
+            if proba <= 0 or proba >= 1:
+                continue
+
+            outcome = 1 if _pari_gagne(
+                marche, reco.get("selection", ""), score_h, score_a
+            ) else 0
+
+            if marche not in data:
+                data[marche] = {"xs": [], "ys": []}
+            data[marche]["xs"].append(proba)
+            data[marche]["ys"].append(outcome)
+
+    return data
