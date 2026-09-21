@@ -1,2 +1,6 @@
 def collecter_donnees(match):
-    return {"status": "ok", "etape": "collecte"}
+    return {
+        "status": "ok",
+        "etape": "collecte",
+        "match": match
+    }
