@@ -21,6 +21,22 @@ def proba_resultat_1x2(lh, la, max_buts=8):
     return p_home, p_nul, p_away
 
 
+def estimer_lambda(proba_home_cible, total_buts=2.7):
+    """Cherche les λ (buts attendus) qui donnent P(home gagne) ≈ cible."""
+    lo, hi = 0.20, 0.90
+    for _ in range(30):
+        mid = (lo + hi) / 2
+        lh = total_buts * mid
+        la = total_buts * (1 - mid)
+        p_h, _, _ = proba_resultat_1x2(lh, la)
+        if p_h < proba_home_cible:
+            lo = mid
+        else:
+            hi = mid
+    mid = (lo + hi) / 2
+    return total_buts * mid, total_buts * (1 - mid)
+
+
 def proba_over(lh, la, ligne=2.5, max_buts=10):
     p_over = 0.0
     for i in range(max_buts + 1):
@@ -44,18 +60,27 @@ def analyser_marche(data):
 
     marge = 0.05
 
-    # --- Estimation des buts attendus (λ) à partir de la cote domicile ---
-    proba_home_implicite = 1 / cote_actuelle
-    ratio_home = 0.5 + (proba_home_implicite - 0.33) * 0.9
-    ratio_home = max(0.30, min(0.72, ratio_home))
+    # --- Probabilité implicite de la cote actuelle ---
+    proba_implicite_home = 1 / cote_actuelle
 
-    total_buts_estime = 2.7
-    lambda_home = total_buts_estime * ratio_home
-    lambda_away = total_buts_estime * (1 - ratio_home)
+    # --- Dé-margeage ---
+    proba_demargee_home = proba_implicite_home / (1 + marge)
 
-    # --- Calcul des probas des marchés ---
-    p_home, p_nul, p_away = proba_resultat_1x2(lambda_home, lambda_away)
-    proba_ah = p_home
+    # --- Signal sharp : mouvement de la cote ---
+    # Si la cote a baissé (mouvement négatif), l'argent intelligent est venu.
+    # On ajoute un petit bonus pour refléter cette information.
+    mouvement = (cote_actuelle - cote_ouverture) / cote_ouverture
+    bonus_sharp = -mouvement * 0.7
+    bonus_sharp = max(-0.02, min(0.03, bonus_sharp))
+
+    # --- Probabilité finale HA -0.5 (= victoire simple du favori) ---
+    proba_ah = proba_demargee_home + bonus_sharp
+    proba_ah = max(0.30, min(0.80, proba_ah))
+
+    # --- Estimation des λ qui donnent P(home gagne) = proba_ah ---
+    lambda_home, lambda_away = estimer_lambda(proba_ah, total_buts=2.7)
+
+    # --- Probas O/U et BTTS via Poisson calibré ---
     proba_over25 = proba_over(lambda_home, lambda_away, 2.5)
     proba_btts_val = proba_btts(lambda_home, lambda_away)
 
@@ -63,8 +88,6 @@ def analyser_marche(data):
     cote_ah_final = float(match.get("cote_ah") or (1 / (proba_ah * (1 + marge))))
     cote_over25_final = float(match.get("cote_over25") or (1 / (proba_over25 * (1 + marge))))
     cote_btts_final = float(match.get("cote_btts") or (1 / (proba_btts_val * (1 + marge))))
-
-    mouvement = (cote_actuelle - cote_ouverture) / cote_ouverture
 
     data["volume"] = volume
     data["liquidite_ok"] = volume >= 50000
