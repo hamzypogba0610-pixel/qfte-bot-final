@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from qfte_engine.pipeline import analyser_match
 from qfte_engine.historique import (
     charger_historique,
@@ -25,6 +26,8 @@ async def analyser(
     competition: str = Form(...),
     equipe1: str = Form(...),
     equipe2: str = Form(...),
+    forme1: int = Form(0),
+    forme2: int = Form(0),
     cote_ouverture: float = Form(...),
     cote_actuelle: float = Form(...),
     cote_ah: float = Form(...),
@@ -37,6 +40,8 @@ async def analyser(
         "competition": competition,
         "equipe1": equipe1,
         "equipe2": equipe2,
+        "forme1": forme1,
+        "forme2": forme2,
         "cote_ouverture": cote_ouverture,
         "cote_actuelle": cote_actuelle,
         "cote_ah": cote_ah,
@@ -61,6 +66,8 @@ async def analyser(
             "lambda_away": resultat.get("lambda_away", "-"),
             "validation": resultat.get("validation", {}),
             "analyse_id": resultat.get("analyse_id", ""),
+            "marge_estimee": resultat.get("marge_estimee", "-"),
+            "total_buts_comp": resultat.get("total_buts_comp", "-"),
         },
     )
 
