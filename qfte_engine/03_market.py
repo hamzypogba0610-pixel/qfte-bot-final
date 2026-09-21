@@ -55,17 +55,15 @@ def analyser_marche(data):
 
     # --- Calcul des probas des marchés ---
     p_home, p_nul, p_away = proba_resultat_1x2(lambda_home, lambda_away)
-    proba_ah = p_home  # Handicap -0.5 = victoire simple
-
+    proba_ah = p_home
     proba_over25 = proba_over(lambda_home, lambda_away, 2.5)
     proba_btts_val = proba_btts(lambda_home, lambda_away)
 
-    # --- Cotes estimées à partir des probas (avec marge bookmaker) ---
-    cote_ah = round(1 / (proba_ah * (1 + marge)), 2)
-    cote_over25 = round(1 / (proba_over25 * (1 + marge)), 2)
-    cote_btts_calc = round(1 / (proba_btts_val * (1 + marge)), 2)
+    # --- Cotes utilisées : celles du bookmaker si fournies, sinon estimation ---
+    cote_ah_final = float(match.get("cote_ah") or (1 / (proba_ah * (1 + marge))))
+    cote_over25_final = float(match.get("cote_over25") or (1 / (proba_over25 * (1 + marge))))
+    cote_btts_final = float(match.get("cote_btts") or (1 / (proba_btts_val * (1 + marge))))
 
-    # Mouvement de cote (sur le marché principal)
     mouvement = (cote_actuelle - cote_ouverture) / cote_ouverture
 
     data["volume"] = volume
@@ -77,24 +75,24 @@ def analyser_marche(data):
         {
             "nom": "Handicap Asiatique -0.5",
             "selection": match.get("equipe1", "-"),
-            "cote": cote_ah,
-            "cote_ouverture": round(cote_ah * 1.02, 2),
+            "cote": round(cote_ah_final, 2),
+            "cote_ouverture": round(cote_ah_final * 1.02, 2),
             "proba_juste": round(proba_ah, 4),
             "mouvement": round(mouvement, 4),
         },
         {
             "nom": "Over/Under 2.5",
             "selection": "Over 2.5",
-            "cote": cote_over25,
-            "cote_ouverture": round(cote_over25 * 1.02, 2),
+            "cote": round(cote_over25_final, 2),
+            "cote_ouverture": round(cote_over25_final * 1.02, 2),
             "proba_juste": round(proba_over25, 4),
             "mouvement": round(mouvement * 0.8, 4),
         },
         {
             "nom": "BTTS",
             "selection": "Oui",
-            "cote": cote_btts_calc,
-            "cote_ouverture": round(cote_btts_calc * 1.02, 2),
+            "cote": round(cote_btts_final, 2),
+            "cote_ouverture": round(cote_btts_final * 1.02, 2),
             "proba_juste": round(proba_btts_val, 4),
             "mouvement": round(mouvement * 0.6, 4),
         },
