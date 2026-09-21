@@ -14,6 +14,9 @@
         .reco.good { border-left-color: #60a5fa; }
         .ligne { margin: 6px 0; }
         .label { color: #9ca3af; }
+        .score-box { display: flex; gap: 10px; flex-wrap: wrap; }
+        .score-item { background: #1a1a1a; padding: 12px 18px; border-radius: 8px; border-left: 4px solid #a78bfa; }
+        .score-val { font-size: 22px; font-weight: bold; color: #a78bfa; }
         .back { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #4ade80; color: #000; text-decoration: none; border-radius: 6px; font-weight: bold; }
     </style>
 </head>
@@ -25,11 +28,35 @@
         <div class="ligne"><span class="label">Sport :</span> {{ match.sport }}</div>
         <div class="ligne"><span class="label">Compétition :</span> {{ match.competition }}</div>
         <div class="ligne"><span class="label">Rencontre :</span> {{ match.equipe1 }} vs {{ match.equipe2 }}</div>
+        <div class="ligne"><span class="label">Buts attendus :</span> {{ lambda_home }} - {{ lambda_away }}</div>
     </div>
+
     <div class="match">
-    <h2>Décision finale</h2>
-    <div class="ligne"><strong>{{ decision }}</strong></div>
-    <div class="ligne"><span class="label">{{ message_discipline }}</span></div>
+        <h2>Décision finale</h2>
+        <div class="ligne"><strong>{{ decision }}</strong></div>
+        <div class="ligne"><span class="label">{{ message_discipline }}</span></div>
+    </div>
+
+    <div class="match">
+        <h2>🎯 Scores prédits (Poisson)</h2>
+
+        <div class="ligne"><span class="label">Score à la mi-temps le plus probable :</span></div>
+        <div class="score-box">
+            <div class="score-item">
+                <div class="score-val">{{ top_ht_score.score }}</div>
+                <div class="label">Proba : {{ (top_ht_score.proba * 100) | round(1) }}%</div>
+            </div>
+        </div>
+
+        <div class="ligne" style="margin-top: 15px;"><span class="label">2 scores exacts les plus probables :</span></div>
+        <div class="score-box">
+            {% for s in top_2_scores %}
+            <div class="score-item">
+                <div class="score-val">{{ s.score }}</div>
+                <div class="label">Proba : {{ (s.proba * 100) | round(1) }}%</div>
+            </div>
+            {% endfor %}
+        </div>
     </div>
 
     <h2>Recommandations</h2>
@@ -48,4 +75,4 @@
 
     <a href="/" class="back">← Nouvelle analyse</a>
 </body>
-</html>
+            </html>
