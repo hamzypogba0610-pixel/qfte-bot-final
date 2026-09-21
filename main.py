@@ -35,41 +35,17 @@ async def analyser(
 
     resultat = analyser_match(match)
 
-    reco_principale = resultat.get("recommandation_finale", {})
-
-    # On duplique la reco principale en 3 niveaux (provisoire)
-    # pour conserver l'affichage à 3 recommandations
-    recommandations = [
-        {**reco_principale, "niveau": "ELITE"},
-        {
-            "niveau": "PREMIUM",
-            "marche": "Over/Under 2.5",
-            "selection": "Over 2.5",
-            "proba": "54%",
-            "cote": "1.95",
-            "ev": "+5.3%",
-            "stake": "1.0%",
-            "fiabilite": "0.78",
-        },
-        {
-            "niveau": "GOOD",
-            "marche": "BTTS",
-            "selection": "Oui",
-            "proba": "52%",
-            "cote": "1.90",
-            "ev": "+4.8%",
-            "stake": "0.8%",
-            "fiabilite": "0.76",
-        },
-    ]
-
     return templates.TemplateResponse(
         request,
         "resultats.html",
         {
             "match": match,
-            "recommandations": recommandations,
+            "recommandations": resultat.get("recommandations", []),
             "decision": resultat.get("decision", "-"),
             "message_discipline": resultat.get("message_discipline", ""),
+            "top_ht_score": resultat.get("top_ht_score", {}),
+            "top_2_scores": resultat.get("top_2_scores", []),
+            "lambda_home": resultat.get("lambda_home", "-"),
+            "lambda_away": resultat.get("lambda_away", "-"),
         },
     )
