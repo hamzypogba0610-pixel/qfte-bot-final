@@ -6,10 +6,6 @@ def poisson(k, lam):
 
 
 def correction_dixon_coles(i, j, lh, la, rho=-0.10):
-    """
-    Applique la correction Dixon-Coles sur les scores faibles.
-    Retourne un facteur multiplicatif (τ) à appliquer à la proba Poisson.
-    """
     if i == 0 and j == 0:
         return 1 - lh * la * rho
     elif i == 0 and j == 1:
@@ -18,22 +14,30 @@ def correction_dixon_coles(i, j, lh, la, rho=-0.10):
         return 1 + la * rho
     elif i == 1 and j == 1:
         return 1 - rho
-    else:
-        return 1.0
+    return 1.0
 
 
 def proba_score(i, j, lh, la, rho=-0.10):
-    """Probabilité d'un score exact avec correction Dixon-Coles."""
     p = poisson(i, lh) * poisson(j, la)
     tau = correction_dixon_coles(i, j, lh, la, rho)
     return p * tau
 
 
+def norm_cdf(x, mu, sigma):
+    z = (x - mu) / sigma
+    return 0.5 * (1 + math.erf(z / math.sqrt(2)))
+
+
 def predire_scores(data):
+    match = data.get("match", {})
+    sport = match.get("sport", "football")
+
+    if sport == "basket":
+        return _scores_basket(data)
+
     lambda_home = float(data.get("lambda_home", 1.4))
     lambda_away = float(data.get("lambda_away", 1.3))
 
-    # --- 2 scores exacts les plus probables (avec Dixon-Coles) ---
     scores = []
     for i in range(0, 6):
         for j in range(0, 6):
@@ -42,10 +46,8 @@ def predire_scores(data):
     scores.sort(key=lambda s: s["proba"], reverse=True)
     top_2_scores = scores[:2]
 
-    # --- Score à la mi-temps le plus probable (~45% des buts en 1ère MT) ---
     lh_ht = lambda_home * 0.45
     la_ht = lambda_away * 0.45
-
     scores_ht = []
     for i in range(0, 4):
         for j in range(0, 4):
@@ -54,7 +56,49 @@ def predire_scores(data):
     scores_ht.sort(key=lambda s: s["proba"], reverse=True)
     top_ht_score = scores_ht[0]
 
-    # --- Ajout de la confiance sur chaque marché ---
+    marches = data.get("marches", [])
+    resultat = []
+    for m in marches:
+        proba_calibree = float(m.get("proba_calibree", 0.5))
+        confiance = proba_calibree if proba_calibree >= 0.5 else (1 - proba_calibree)
+        m["confiance"] = round(confiance * 100, 1)
+        resultat.append(m)
+
+    data["marches"] = resultat
+    data["top_2_scores"] = top_2_scores
+    data["top_ht_score"] = top_ht_score
+    return data
+
+
+def _scores_basket(data):
+    """
+    Pour le basket : on affiche des marges de victoire probables
+    et une projection du score total.
+    """
+    ecart_moyen = float(data.get("lambda_home", 0))
+
+    # Marges de victoire les plus probables (autour de l'écart moyen)
+    marges = []
+    for m in range(int(ecart_moyen) - 4, int(ecart_moyen) + 5):
+        p = norm_cdf(m + 0.5, ecart_moyen, 12) - norm_cdf(m - 0.5, ecart_moyen, 12)
+        if p > 0:
+            marges.append({"score": f"+{m}" if m > 0 else str(m), "proba": round(p, 4)})
+    marges.sort(key=lambda x: x["proba"], reverse=True)
+    top_2_scores = marges[:2]
+
+    # Score projeté à la mi-temps (~50% des points)
+    total_estime = 180
+    score_ht = total_estime / 2
+    if ecart_moyen >= 0:
+        proj_ht = f"{(score_ht + ecart_moyen/2):.0f}-{(score_ht - ecart_moyen/2):.0f}"
+    else:
+        proj_ht = f"{(score_ht + ecart_moyen/2):.0f}-{(score_ht - ecart_moyen/2):.0f}"
+
+    top_ht_score = {
+        "score": proj_ht,
+        "proba": 0.15,  # proba indicative
+    }
+
     marches = data.get("marches", [])
     resultat = []
     for m in marches:
