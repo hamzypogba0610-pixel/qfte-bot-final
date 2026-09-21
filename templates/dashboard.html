@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QFTE V23.0 – Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: 20px auto; padding: 15px; background: #0f0f0f; color: #eee; }
+        h1 { color: #4ade80; text-align: center; }
+        h2 { color: #facc15; margin-top: 25px; }
+        .card { background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .stat { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #2a2a2a; }
+        .stat:last-child { border-bottom: none; }
+        .label { color: #9ca3af; }
+        .val { font-weight: bold; color: #4ade80; }
+        .drift-NORMAL { color: #4ade80; }
+        .drift-SURVEILLANCE { color: #facc15; }
+        .drift-CRITIQUE { color: #ef4444; }
+        .histo { padding: 10px; background: #141414; border-radius: 6px; margin-bottom: 8px; font-size: 14px; }
+        .histo .date { color: #6b7280; font-size: 12px; }
+        .back { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #4ade80; color: #000; text-decoration: none; border-radius: 6px; font-weight: bold; margin-right: 8px; }
+        .back-alt { background: #60a5fa; }
+    </style>
+</head>
+<body>
+    <h1>📊 Dashboard QFTE V23.0</h1>
+
+    <div class="card">
+        <h2>État du modèle</h2>
+        <div class="stat">
+            <span class="label">Niveau de dérive</span>
+            <span class="val drift-{{ stats.niveau_drift }}">{{ stats.niveau_drift }}</span>
+        </div>
+        <div class="stat">
+            <span class="label">Message</span>
+            <span>{{ stats.message_drift }}</span>
+        </div>
+        <div class="stat">
+            <span class="label">Total d'analyses</span>
+            <span class="val">{{ stats.total }}</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Répartition par décision</h2>
+        {% for k, v in stats.par_decision.items() %}
+        <div class="stat">
+            <span class="label">{{ k }}</span>
+            <span class="val">{{ v }}</span>
+        </div>
+        {% endfor %}
+        {% if not stats.par_decision %}
+        <div class="label">Aucune donnée.</div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Répartition par marché</h2>
+        {% for k, v in stats.par_marche.items() %}
+        <div class="stat">
+            <span class="label">{{ k }}</span>
+            <span class="val">{{ v }}</span>
+        </div>
+        {% endfor %}
+        {% if not stats.par_marche %}
+        <div class="label">Aucune donnée.</div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Répartition par sport</h2>
+        {% for k, v in stats.par_sport.items() %}
+        <div class="stat">
+            <span class="label">{{ k }}</span>
+            <span class="val">{{ v }}</span>
+        </div>
+        {% endfor %}
+        {% if not stats.par_sport %}
+        <div class="label">Aucune donnée.</div>
+        {% endif %}
+    </div>
+
+    <h2>20 dernières analyses</h2>
+    {% for h in dernieres %}
+    <div class="histo">
+        <div class="date">{{ h.date }}</div>
+        <div><strong>{{ h.equipe1 }} vs {{ h.equipe2 }}</strong> — {{ h.competition }}</div>
+        <div class="label">Décision : {{ h.decision }}</div>
+        {% if h.meilleure_reco %}
+        <div class="label">Top reco : {{ h.meilleure_reco.marche }} — {{ h.meilleure_reco.niveau }} (EV {{ h.meilleure_reco.ev }})</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% if not dernieres %}
+    <div class="label">Aucune analyse enregistrée.</div>
+    {% endif %}
+
+    <a href="/" class="back">← Nouvelle analyse</a>
+    <a href="/dashboard" class="back back-alt">🔄 Actualiser</a>
+</body>
+          </html>
