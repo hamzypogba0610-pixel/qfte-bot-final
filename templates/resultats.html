@@ -16,6 +16,7 @@
         .reco.surveillance { border-left-color: #a78bfa; }
         .ligne { margin: 6px 0; }
         .label { color: #9ca3af; }
+        .ic { color: #a78bfa; font-size: 13px; }
         .score-box { display: flex; gap: 10px; flex-wrap: wrap; }
         .score-item { background: #1a1a1a; padding: 12px 18px; border-radius: 8px; border-left: 4px solid #a78bfa; }
         .score-val { font-size: 22px; font-weight: bold; color: #a78bfa; }
@@ -37,6 +38,10 @@
         .resultat-box input[type="number"] { width: 70px; padding: 8px; border-radius: 6px; border: 1px solid #333; background: #0f0f0f; color: #eee; }
         .resultat-box .coche { margin-top: 10px; display: block; }
         .resultat-box button { margin-top: 15px; width: 100%; padding: 12px; background: #60a5fa; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 15px; }
+        .calib-box { background: #141414; padding: 10px; border-radius: 6px; margin-top: 8px; font-size: 12px; }
+        .calib-title { color: #a78bfa; font-weight: bold; margin-bottom: 4px; }
+        .calib-src { display: flex; justify-content: space-between; padding: 2px 0; }
+        .calib-src .label { color: #6b7280; }
     </style>
 </head>
 <body>
@@ -65,6 +70,13 @@
         <div class="ligne"><span class="label">Écart attendu :</span> {{ lambda_home }} pts (équipe 1)</div>
         {% else %}
         <div class="ligne"><span class="label">Buts attendus :</span> {{ lambda_home }} - {{ lambda_away }}</div>
+        {% endif %}
+        <div class="ligne"><span class="label">Forme :</span> {{ match.forme1 }} / {{ match.forme2 }}</div>
+        {% if marge_estimee != "-" %}
+        <div class="ligne"><span class="label">Marge bookmaker estimée :</span> {{ (marge_estimee * 100) | round(1) }}%</div>
+        {% endif %}
+        {% if total_buts_comp != "-" %}
+        <div class="ligne"><span class="label">Total de buts (compétition) :</span> {{ total_buts_comp }}</div>
         {% endif %}
     </div>
 
@@ -117,10 +129,27 @@
         <div class="ligne"><span class="label">Marché :</span> {{ r.marche }}</div>
         <div class="ligne"><span class="label">Sélection :</span> {{ r.selection }}</div>
         <div class="ligne"><span class="label">Proba calibrée :</span> {{ r.proba }}</div>
+        {% if r.intervalle_confiance %}
+        <div class="ligne ic">Intervalle 95% : [{{ r.intervalle_confiance.bas }} — {{ r.intervalle_confiance.haut }}]</div>
+        {% endif %}
         <div class="ligne"><span class="label">Cote :</span> {{ r.cote }}</div>
         <div class="ligne"><span class="label">EV net :</span> {{ r.ev }}</div>
         <div class="ligne"><span class="label">Stake :</span> {{ r.stake }}</div>
         <div class="ligne"><span class="label">Fiabilité :</span> {{ r.fiabilite }}</div>
+
+        {% if r.poids_hybrides %}
+        <div class="calib-box">
+            <div class="calib-title">🧠 Décomposition hybride</div>
+            <div class="calib-src"><span class="label">Marché ({{ (r.poids_hybrides.marche * 100) | round(0) }}%)</span><span>{{ r.proba_marche }}</span></div>
+            <div class="calib-src"><span class="label">Poisson ({{ (r.poids_hybrides.poisson * 100) | round(0) }}%)</span><span>{{ r.proba_poisson }}</span></div>
+            <div class="calib-src"><span class="label">Sharp ({{ (r.poids_hybrides.sharp * 100) | round(0) }}%)</span><span>{{ r.proba_sharp }}</span></div>
+            {% if r.proba_hist is not none %}
+            <div class="calib-src"><span class="label">Historique ({{ (r.poids_hybrides.hist * 100) | round(0) }}%)</span><span>{{ r.proba_hist }}</span></div>
+            {% else %}
+            <div class="calib-src"><span class="label">Historique</span><span class="label">en attente (20+ obs.)</span></div>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
     {% endfor %}
 
@@ -162,4 +191,4 @@
     <a href="/" class="back">← Nouvelle analyse</a>
     <a href="/dashboard" class="back back-alt">📊 Dashboard</a>
 </body>
-    </html>
+                </html>
