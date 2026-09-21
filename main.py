@@ -9,7 +9,7 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/", response_class=HTMLResponse)
 async def accueil(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.post("/analyser", response_class=HTMLResponse)
@@ -35,7 +35,6 @@ async def analyser(
 
     _ = analyser_match(match)
 
-    # Recommandations provisoires (à remplacer en PHASE 5)
     recommandations = [
         {
             "niveau": "ELITE",
@@ -70,10 +69,10 @@ async def analyser(
     ]
 
     return templates.TemplateResponse(
+        request,
         "resultats.html",
         {
-            "request": request,
             "match": match,
             "recommandations": recommandations,
         },
-)
+    )
