@@ -63,12 +63,17 @@ def sauvegarder_analyse(match, resultat):
 
 def _pari_gagne(marche, selection, score_home, score_away):
     total = score_home + score_away
+    selection = (selection or "").lower()
 
     if "Handicap" in marche:
         return score_home > score_away
 
-    if "Over" in marche and "2.5" in marche:
-        return total > 2.5
+    # Over/Under 2.5 : on regarde la sélection (Over ou Under)
+    if "Over/Under 2.5" in marche or ("2.5" in marche and "Total" not in marche):
+        if "under" in selection:
+            return total < 2.5
+        else:
+            return total > 2.5
 
     if "BTTS" in marche:
         return score_home >= 1 and score_away >= 1
@@ -78,10 +83,12 @@ def _pari_gagne(marche, selection, score_home, score_away):
         return score_home > score_away
 
     if "Spread" in marche:
-        # Spread -4.5 : équipe 1 doit gagner par 5+
         return (score_home - score_away) > 4.5
 
+    # Total Points (Over/Under 180.5)
     if "Total Points" in marche:
+        if "under" in selection:
+            return total < 180.5
         return total > 180.5
 
     return False
@@ -213,11 +220,6 @@ def calculer_statistiques():
 
 
 def recuperer_donnees_apprentissage():
-    """
-    Extrait les paires (proba_prédite, résultat) pour chaque marché
-    à partir des analyses passées ayant un résultat enregistré.
-    Utilisé pour entraîner les calibrateurs (Platt, Beta, Isotonic).
-    """
     historique = charger_historique()
     data = {}
 
