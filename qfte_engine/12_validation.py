@@ -1,6 +1,6 @@
 """
 Module de validation QFTE V23.0.
-Vérifie la cohérence des cotes saisies — football ET basket.
+Vérifie la cohérence des cotes — football, basket ET tennis.
 """
 
 
@@ -15,7 +15,7 @@ def _valider_football(match):
     cote_over25 = float(match.get("cote_over25", 0) or 0)
     cote_btts = float(match.get("cote_btts", 0) or 0)
 
-    # --- 1. Cohérence 1X2 vs HA -0.5 (quasi identiques) ---
+    # --- 1. Cohérence 1X2 vs HA -0.5 ---
     if cote_1x2 > 0 and cote_ah > 0:
         ecart_ah = abs(cote_1x2 - cote_ah)
         if ecart_ah > 0.20:
@@ -71,14 +71,12 @@ def _valider_basket(match):
     alertes = []
     score_validation = 100
 
-    cote_ml = float(match.get("cote_actuelle", 0) or 0)  # Money Line
+    cote_ml = float(match.get("cote_actuelle", 0) or 0)
     cote_ouverture = float(match.get("cote_ouverture", 0) or 0)
-    cote_spread = float(match.get("cote_ah", 0) or 0)     # Spread -4.5
-    cote_total = float(match.get("cote_over25", 0) or 0)  # Total Points
+    cote_spread = float(match.get("cote_ah", 0) or 0)
+    cote_total = float(match.get("cote_over25", 0) or 0)
 
     # --- 1. Cohérence Money Line vs Spread ---
-    # Le Spread -4.5 donne un favori qui gagne par 5+. Sa cote doit être
-    # PLUS ÉLEVÉE que la Money Line (car condition plus difficile).
     if cote_ml > 0 and cote_spread > 0:
         ecart = cote_spread - cote_ml
         if ecart < -0.10:
@@ -94,7 +92,6 @@ def _valider_basket(match):
             score_validation -= 10
 
     # --- 2. Plausibilité de la ligne totale ---
-    # La cote Total Points basket est typiquement entre 1.70 et 2.10
     if cote_total > 0:
         if cote_total < 1.60:
             alertes.append(f"⚠️ Cote Total Points {cote_total} très basse — la ligne est probablement mal saisie")
@@ -137,6 +134,78 @@ def _valider_basket(match):
     return score_validation, alertes
 
 
+
+def _valider_tennis(match):
+    """Validation spécifique au tennis."""
+    alertes = []
+    score_validation = 100
+
+    cote_vainqueur = float(match.get("cote_actuelle", 0) or 0)
+    cote_ouverture = float(match.get("cote_ouverture", 0) or 0)
+    cote_ou_jeux = float(match.get("cote_over25", 0) or 0)
+    cote_score_2_0 = float(match.get("cote_btts", 0) or 0)
+
+    # --- 1. Cohérence Vainqueur vs Score 2-0 ---
+    # Le score 2-0 est plus restrictif que "gagner le match".
+    # Donc sa cote doit être PLUS ÉLEVÉE que celle du Vainqueur.
+    if cote_vainqueur > 0 and cote_score_2_0 > 0:
+        ecart = cote_score_2_0 - cote_vainqueur
+        if ecart < -0.10:
+            alertes.append(
+                f"🚨 Incohérence Vainqueur/Score 2-0 : Vainqueur ({cote_vainqueur}) > Score 2-0 ({cote_score_2_0}). Le 2-0 doit être ≥ Vainqueur."
+            )
+            score_validation -= 30
+        elif ecart < 0:
+            alertes.append(f"⚠️ Score 2-0 légèrement inférieur au Vainqueur — vérifier")
+            score_validation -= 10
+        elif ecart > 2.0:
+            alertes.append(f"⚠️ Écart très important Vainqueur/Score 2-0 : +{round(ecart, 2)}")
+            score_validation -= 10
+
+    # --- 2. Plausibilité Over/Under Jeux ---
+    # Cote Over/Under tennis typiquement entre 1.70 et 2.10
+    if cote_ou_jeux > 0:
+        if cote_ou_jeux < 1.50:
+            alertes.append(f"⚠️ Cote Over/Under Jeux {cote_ou_jeux} très basse — vérifier la ligne")
+            score_validation -= 10
+        elif cote_ou_jeux > 2.50:
+            alertes.append(f"⚠️ Cote Over/Under Jeux {cote_ou_jeux} très haute — vérifier la ligne")
+            score_validation -= 10
+
+    # --- 3. Mouvement de cote ---
+    if cote_ouverture > 0 and cote_vainqueur > 0:
+        mouvement = abs(cote_vainqueur - cote_ouverture) / cote_ouverture
+        if mouvement > 0.25:
+            alertes.append(f"🚨 Mouvement de cote fort : {round(mouvement * 100, 1)}%")
+            score_validation -= 20
+        elif mouvement > 0.12:
+            alertes.append(f"⚠️ Mouvement de cote notable : {round(mouvement * 100, 1)}%")
+            score_validation -= 10
+
+    # --- 4. Plausibilité du Vainqueur ---
+    if cote_vainqueur > 0:
+        proba_v = 1 / cote_vainqueur
+        if proba_v > 0.90:
+            alertes.append(f"⚠️ Vainqueur {cote_vainqueur} implique {round(proba_v*100, 1)}% de proba — suspect")
+            score_validation -= 15
+        elif proba_v < 0.15:
+            alertes.append(f"⚠️ Vainqueur {cote_vainqueur} implique seulement {round(proba_v*100, 1)}% — outsider très faible")
+            score_validation -= 5
+
+    # --- 5. Plausibilité des cotes globales ---
+    toutes = {"Vainqueur": cote_vainqueur, "O/U Jeux": cote_ou_jeux, "Score 2-0": cote_score_2_0}
+    for nom, c in toutes.items():
+        if c > 0:
+            if c < 1.01:
+                alertes.append(f"🚨 Cote {nom} invalide : {c} (< 1.01)")
+                score_validation -= 25
+            elif c > 20:
+                alertes.append(f"⚠️ Cote {nom} très élevée : {c} (> 20)")
+                score_validation -= 10
+
+    return score_validation, alertes
+
+
 def valider_coherence(data):
     """
     Point d'entrée : choisit la validation selon le sport.
@@ -146,6 +215,8 @@ def valider_coherence(data):
 
     if sport == "basket":
         score_validation, alertes = _valider_basket(match)
+    elif sport == "tennis":
+        score_validation, alertes = _valider_tennis(match)
     else:
         score_validation, alertes = _valider_football(match)
 
