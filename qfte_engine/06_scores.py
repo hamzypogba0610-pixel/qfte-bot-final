@@ -6,12 +6,6 @@ def poisson(k, lam):
 
 
 def rho_adaptatif(lh, la):
-    """
-    ρ Dixon-Coles adaptatif selon le total de buts attendu :
-    - Match défensif (total < 2.3) → ρ = -0.15 (correction forte)
-    - Match moyen    (total 2.3-3.0) → ρ = -0.10 (valeur standard)
-    - Match offensif (total > 3.0) → ρ = -0.05 (correction faible)
-    """
     total = lh + la
     if total < 2.3:
         return -0.15
@@ -50,7 +44,12 @@ def predire_scores(data):
 
     if sport == "basket":
         return _scores_basket(data)
+    if sport == "tennis":
+        return _scores_tennis(data)
+    return _scores_football(data)
 
+
+def _scores_football(data):
     lambda_home = float(data.get("lambda_home", 1.4))
     lambda_away = float(data.get("lambda_away", 1.3))
 
@@ -106,10 +105,7 @@ def _scores_basket(data):
     score_ht = total_estime / 2
     proj_ht = f"{(score_ht + ecart_moyen/2):.0f}-{(score_ht - ecart_moyen/2):.0f}"
 
-    top_ht_score = {
-        "score": proj_ht,
-        "proba": 0.15,
-    }
+    top_ht_score = {"score": proj_ht, "proba": 0.15}
 
     marches = data.get("marches", [])
     resultat = []
@@ -122,4 +118,66 @@ def _scores_basket(data):
     data["marches"] = resultat
     data["top_2_scores"] = top_2_scores
     data["top_ht_score"] = top_ht_score
+    return data
+
+
+
+def _scores_tennis(data):
+    """
+    Prédiction des scores tennis (en sets) via loi binomiale.
+    - Best of 3 : scores possibles 2-0, 2-1, 1-2, 0-2
+    - Best of 5 : scores possibles 3-0, 3-1, 3-2, 2-3, 1-3, 0-3
+    - Score après 1er set : 1-0 ou 0-1 selon p_set
+    """
+    tennis_cfg = data.get("tennis_config", {})
+    p_set = float(tennis_cfg.get("p_set", 0.5))
+    best_of = int(tennis_cfg.get("best_of", 3))
+    ligne_jeux = float(tennis_cfg.get("ligne_jeux", 22.5))
+
+    p_opp = 1 - p_set
+
+    # --- Calcul des probas de chaque score de sets ---
+    scores = []
+
+    if best_of == 3:
+        scores.append({"score": "2-0", "proba": round(p_set ** 2, 4)})
+        scores.append({"score": "2-1", "proba": round(2 * (p_set ** 2) * p_opp, 4)})
+        scores.append({"score": "1-2", "proba": round(2 * p_set * (p_opp ** 2), 4)})
+        scores.append({"score": "0-2", "proba": round(p_opp ** 2, 4)})
+    else:  # best_of == 5
+        scores.append({"score": "3-0", "proba": round(p_set ** 3, 4)})
+        scores.append({"score": "3-1", "proba": round(3 * (p_set ** 3) * p_opp, 4)})
+        scores.append({"score": "3-2", "proba": round(6 * (p_set ** 3) * (p_opp ** 2), 4)})
+        scores.append({"score": "2-3", "proba": round(6 * (p_set ** 2) * (p_opp ** 3), 4)})
+        scores.append({"score": "1-3", "proba": round(3 * p_set * (p_opp ** 3), 4)})
+        scores.append({"score": "0-3", "proba": round(p_opp ** 3, 4)})
+
+    scores.sort(key=lambda s: s["proba"], reverse=True)
+    top_2_scores = scores[:2]
+
+    # --- Score après 1er set ---
+    if p_set >= 0.5:
+        top_ht_score = {
+            "score": "1-0",
+            "proba": round(p_set, 4),
+        }
+    else:
+        top_ht_score = {
+            "score": "0-1",
+            "proba": round(p_opp, 4),
+        }
+
+    # --- Ajout de la confiance sur chaque marché ---
+    marches = data.get("marches", [])
+    resultat = []
+    for m in marches:
+        proba_calibree = float(m.get("proba_calibree", 0.5))
+        confiance = proba_calibree if proba_calibree >= 0.5 else (1 - proba_calibree)
+        m["confiance"] = round(confiance * 100, 1)
+        resultat.append(m)
+
+    data["marches"] = resultat
+    data["top_2_scores"] = top_2_scores
+    data["top_ht_score"] = top_ht_score
+    data["ligne_jeux_tennis"] = ligne_jeux
     return data
