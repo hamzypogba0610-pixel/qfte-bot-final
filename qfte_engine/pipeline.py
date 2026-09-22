@@ -14,6 +14,7 @@ _discipline = importlib.import_module("qfte_engine.09_discipline")
 _output = importlib.import_module("qfte_engine.10_output")
 _monitor = importlib.import_module("qfte_engine.11_monitor")
 _partenariat = importlib.import_module("qfte_engine.15_partenariat")
+_amplificateur = importlib.import_module("qfte_engine.16_amplificateur")
 
 
 def analyser_match(match):
@@ -29,6 +30,7 @@ def analyser_match(match):
     data = _risk.gerer_risques(data)
     data = _discipline.appliquer_discipline(data)
     data = _output.formater_recommandation(data)
+    data = _partenariat.apposer_signature(data)      # Σ couche partenariat
+    data = _amplificateur.amplifier(data)            # ⚡ Couche A amplificateur
     data = _monitor.surveiller(data)
-    data = _partenariat.apposer_signature(data)   # Σ Couche Partenariat
     return data
