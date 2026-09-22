@@ -278,3 +278,57 @@ def recuperer_donnees_apprentissage():
             data[marche]["ws"].append(poids)
 
     return data
+
+
+def recuperer_donnees_bma():
+    """
+    Extrait les données pour l'entraînement BMA.
+    Pour chaque marché, retourne les triplets (proba_marche, proba_poisson,
+    proba_sharp, outcome, poids_temporel).
+
+    Utilisé par calculer_poids_bma() pour apprendre les poids optimaux
+    de chaque source (Marché / Poisson / Sharp).
+    """
+    historique = charger_historique()
+    data = {}
+
+    for h in historique:
+        res = h.get("resultat")
+        if not res:
+            continue
+
+        score_h = res.get("score_home", 0)
+        score_a = res.get("score_away", 0)
+        poids = _poids_temporel(h.get("date", ""))
+
+        for reco in h.get("recommandations", []):
+            marche = reco.get("marche", "")
+            outcome = 1 if _pari_gagne(
+                marche, reco.get("selection", ""), score_h, score_a
+            ) else 0
+
+            # Les 3 sources principales — présentes après la calibration
+            pm = reco.get("proba_marche")
+            pp = reco.get("proba_poisson")
+            ps = reco.get("proba_sharp")
+
+            if pm is None or pp is None or ps is None:
+                continue
+
+            try:
+                pm = float(pm)
+                pp = float(pp)
+                ps = float(ps)
+            except (ValueError, TypeError):
+                continue
+
+            if marche not in data:
+                data[marche] = {"marche": [], "poisson": [], "sharp": [], "y": [], "w": []}
+
+            data[marche]["marche"].append(pm)
+            data[marche]["poisson"].append(pp)
+            data[marche]["sharp"].append(ps)
+            data[marche]["y"].append(outcome)
+            data[marche]["w"].append(poids)
+
+    return data
