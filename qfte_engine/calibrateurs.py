@@ -1,7 +1,7 @@
 """
 Module de calibration avancée QFTE V23.0.
-Contient 4 calibrateurs + la formule signature QFTE Fusion.
-Version AVEC time-decay weighting.
+Contient 4 calibrateurs + QFTE Fusion + Bayesian Model Averaging.
+Version AVEC time-decay weighting et BMA.
 
 Pur Python — aucune dépendance externe.
 """
@@ -24,10 +24,6 @@ def logit(p):
 # LOG-LOSS PONDÉRÉ (WEIGHTED) — Time-decay
 # ============================================================
 def log_loss(ys, ps, ws=None):
-    """
-    Log-loss pondéré par les poids temporels.
-    Si ws est None → poids uniformes (comportement classique).
-    """
     eps = 1e-9
     n = len(ys)
     if n == 0: return 1.0
@@ -121,9 +117,8 @@ def isotonic_fit(xs, ys, ws=None):
     if ws is None:
         ws = [1.0] * len(xs)
 
-    # Tri + PAV pondéré
     pairs = sorted(zip(xs, ys, ws), key=lambda t: t[0])
-    blocks = []  # [sum_x_w, sum_y_w, sum_w]
+    blocks = []
     for x, y, w in pairs:
         blocks.append([x * w, y * w, w])
         while len(blocks) >= 2:
@@ -140,9 +135,7 @@ def isotonic_fit(xs, ys, ws=None):
     result = []
     for b in blocks:
         if b[2] > 0:
-            x_mid = b[0] / b[2]
-            y_val = b[1] / b[2]
-            result.append((x_mid, y_val))
+            result.append((b[0] / b[2], b[1] / b[2]))
     if not result:
         return [(0.0, 0.0), (1.0, 1.0)]
     if result[0][0] > 0.0:
@@ -165,7 +158,7 @@ def isotonic_predict(x, breaks):
 
 
 # ============================================================
-# 4. ✨ QFTE FUSION CALIBRATION — FORMULE SIGNATURE ✨
+# 4. ✨ QFTE FUSION CALIBRATION — SIGNATURE ✨
 # ============================================================
 def temperature_adaptatif(p, force_signal, marge_marche):
     incertitude = 1 - abs(p - 0.5) * 2
@@ -195,7 +188,6 @@ def qfte_fusion_calibration(p, force_signal=0.5, marge_marche=0.05, sharp_signal
     z = logit(p)
     T = temperature_adaptatif(p, force_signal, marge_marche)
     z_t = z / T
-    corr_sin = correction_sinusoidale(p, amplitude=0.04)
     focal = focal_weight(p)
     z_focal = z_t + (focal - 0.5) * 0.05
     z_sharp = z_focal + sharp_signal * 0.15
@@ -205,13 +197,9 @@ def qfte_fusion_calibration(p, force_signal=0.5, marge_marche=0.05, sharp_signal
 
 
 # ============================================================
-# 5. ENTRAÎNEMENT ENSEMBLE (avec time-decay)
+# 5. ENSEMBLE (Platt + Beta + Isotonic) avec time-decay
 # ============================================================
 def entrainer_ensemble(xs, ys, ws=None):
-    """
-    Entraîne les 3 calibrateurs avec pondération temporelle.
-    Les poids de l'ensemble sont calculés via log-loss pondéré.
-    """
     if len(xs) < 20:
         return None
     if ws is None:
@@ -268,3 +256,78 @@ def intervalle_confiance(p, n_obs=0, force=20, z=1.96):
     var = (a * b) / ((t ** 2) * (t + 1))
     std = math.sqrt(var)
     return round(max(0.0, p - z * std), 4), round(min(1.0, p + z * std), 4)
+
+
+# ============================================================
+# 7. ✨ BAYESIAN MODEL AVERAGING (BMA) ✨
+# ============================================================
+def _log_loss_source(probas, ys, ws):
+    """Log-loss pondéré pour une source unique."""
+    eps = 1e-9
+    n = len(ys)
+    if n == 0: return 1.0
+    total_w = sum(ws) or 1.0
+    s = 0.0
+    for p, y, w in zip(probas, ys, ws):
+        p = max(eps, min(1 - eps, p))
+        s -= w * (y * math.log(p) + (1 - y) * math.log(1 - p))
+    return s / total_w
+
+
+def calculer_poids_bma(donnees, poids_defaut=None, lissage=0.15):
+    """
+    ✨ Bayesian Model Averaging ✨
+    Apprend les poids optimaux des 3 sources (Marché / Poisson / Sharp)
+    à partir de l'historique.
+
+    Paramètres :
+      donnees : dict { "marche": [...], "poisson": [...], "sharp": [...],
+                       "y": [...], "w": [...] }
+      poids_defaut : dict de repli si l'historique est insuffisant
+      lissage : force du shrinkage vers les poids par défaut (0.0 = aucun, 1.0 = total)
+
+    Retourne : dict { "marche": w1, "poisson": w2, "sharp": w3 }
+    """
+    if poids_defaut is None:
+        poids_defaut = {"marche": 0.40, "poisson": 0.45, "sharp": 0.15}
+
+    # Pas assez de données → poids par défaut
+    n = len(donnees.get("y", []))
+    if n < 15:
+        return dict(poids_defaut)
+
+    ys = donnees["y"]
+    ws = donnees["w"]
+
+    ll_marche = _log_loss_source(donnees["marche"], ys, ws)
+    ll_poisson = _log_loss_source(donnees["poisson"], ys, ws)
+    ll_sharp = _log_loss_source(donnees["sharp"], ys, ws)
+
+    # Poids = inverse du log-loss (softmax inverse)
+    eps = 1e-6
+    inv_m = 1.0 / (ll_marche + eps)
+    inv_p = 1.0 / (ll_poisson + eps)
+    inv_s = 1.0 / (ll_sharp + eps)
+    total = inv_m + inv_p + inv_s
+
+    w_m = inv_m / total
+    w_p = inv_p / total
+    w_s = inv_s / total
+
+    # Shrinkage vers les poids par défaut (évite les extrêmes)
+    w_m = (1 - lissage) * w_m + lissage * poids_defaut["marche"]
+    w_p = (1 - lissage) * w_p + lissage * poids_defaut["poisson"]
+    w_s = (1 - lissage) * w_s + lissage * poids_defaut["sharp"]
+
+    # Normalisation finale
+    t = w_m + w_p + w_s
+    return {
+        "marche": round(w_m / t, 4),
+        "poisson": round(w_p / t, 4),
+        "sharp": round(w_s / t, 4),
+        "log_loss_marche": round(ll_marche, 4),
+        "log_loss_poisson": round(ll_poisson, 4),
+        "log_loss_sharp": round(ll_sharp, 4),
+        "n_obs": n,
+        "source_apprise": True,
+    }
