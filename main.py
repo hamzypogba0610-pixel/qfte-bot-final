@@ -92,8 +92,11 @@ async def analyser(
             "auto_ou": resultat.get("auto_ou", {}),
             "copula_correlations": resultat.get("copula_correlations", {}),
             "copula_correlations_apprises": resultat.get("copula_correlations_apprises", 0),
+            "copula_sport": resultat.get("copula_sport", ""),
             "attention": resultat.get("attention", {}),
             "bma_actif": resultat.get("bma_actif", False),
+            "basket_config": resultat.get("basket_config", {}),
+            "tennis_config": resultat.get("tennis_config", {}),
         },
     )
 
@@ -126,3 +129,4 @@ async def dashboard(request: Request):
             "dernieres": dernieres,
         },
     )
+
