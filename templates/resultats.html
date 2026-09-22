@@ -15,6 +15,7 @@
         .reco.good { border-left-color: #60a5fa; }
         .reco.avoid { border-left-color: #6b7280; }
         .reco.surveillance { border-left-color: #a78bfa; }
+        .reco.elite { border-left-color: #22d3ee; box-shadow: 0 0 12px rgba(34,211,238,0.25); }
         .ligne { margin: 6px 0; }
         .label { color: #9ca3af; }
         .ic { color: #a78bfa; font-size: 13px; }
@@ -47,6 +48,16 @@
         .ctx-val { font-weight: bold; color: #4ade80; }
         .ctx-val.neg { color: #ef4444; }
         .ctx-val.neutre { color: #facc15; }
+        .amplif-box { background: linear-gradient(135deg, #1a0a00, #1a1a1a); padding: 10px; border-radius: 6px; margin-top: 8px; font-size: 12px; border: 1px solid #f59e0b33; }
+        .amplif-title { color: #f59e0b; font-weight: bold; margin-bottom: 6px; letter-spacing: 1px; }
+        .amplif-row { display: flex; justify-content: space-between; padding: 2px 0; }
+        .amplif-val { color: #4ade80; font-weight: bold; }
+        .amplif-facteurs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 8px; font-size: 10px; }
+        .amplif-facteurs span { background: #0a0a0a; padding: 3px 6px; border-radius: 4px; color: #f59e0b; text-align: center; font-family: monospace; }
+        .seuils-box { background: #0a0a0a; padding: 8px 12px; border-radius: 6px; margin-top: 10px; font-size: 12px; display: flex; justify-content: space-around; border: 1px dashed #2a2a2a; }
+        .seuils-box .seuil-item { text-align: center; }
+        .seuils-box .seuil-label { color: #6b7280; font-size: 10px; display: block; }
+        .seuils-box .seuil-val { color: #4ade80; font-weight: bold; font-family: monospace; }
         .signature-box { margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #0a0a0a, #141414); border-radius: 12px; border: 2px solid #2a2a2a; text-align: center; }
         .sig-diamant { border-color: #a78bfa; box-shadow: 0 0 20px rgba(167,139,250,0.3); }
         .sig-or { border-color: #facc15; box-shadow: 0 0 15px rgba(250,204,21,0.25); }
@@ -230,8 +241,37 @@
             {% endif %}
         </div>
         {% endif %}
+
+        {% if r.facteurs_amplification %}
+        <div class="amplif-box">
+            <div class="amplif-title">⚡ Couche A — Amplification</div>
+            <div class="amplif-row"><span class="label">EV avant</span><span>{{ r.ev_brut_avant_amplification }}</span></div>
+            <div class="amplif-row"><span class="label">EV après</span><span class="amplif-val">{{ r.ev }}</span></div>
+            <div class="amplif-row"><span class="label">Fiabilité avant</span><span>{{ r.fiabilite_avant_amplification }}</span></div>
+            <div class="amplif-row"><span class="label">Fiabilité après</span><span class="amplif-val">{{ r.fiabilite }}</span></div>
+            <div class="amplif-facteurs">
+                <span>CSA {{ r.facteurs_amplification.csa }}</span>
+                <span>CBE {{ r.facteurs_amplification.cbe }}</span>
+                <span>VS {{ r.facteurs_amplification.vs }}</span>
+                <span>SDD {{ r.facteurs_amplification.sdd }}</span>
+            </div>
+        </div>
+        {% endif %}
     </div>
     {% endfor %}
+
+    {% if signature and signature.seuils_amplifies %}
+    <div class="seuils-box">
+        <div class="seuil-item">
+            <span class="seuil-label">Seuil EV</span>
+            <span class="seuil-val">{{ (signature.seuils_amplifies.seuil_ev * 100) | round(1) }}%</span>
+        </div>
+        <div class="seuil-item">
+            <span class="seuil-label">Seuil Fiabilité</span>
+            <span class="seuil-val">{{ signature.seuils_amplifies.seuil_fiabilite }}</span>
+        </div>
+    </div>
+    {% endif %}
 
     {% if analyse_id %}
     <div class="resultat-box">
@@ -287,7 +327,8 @@
             <div class="sig-item"><span>Calibration</span><span>{{ signature.signaux.calibration }}</span></div>
             <div class="sig-item"><span>Liquidité</span><span>{{ signature.signaux.liquidite }}</span></div>
             <div class="sig-item"><span>Consensus</span><span>{{ signature.signaux.consensus }}</span></div>
-            <div class="sig-item"><span>Robustesse</span><span>{{ signature.signaux.robustesse }}</span></div>
+            <div class="sig-item">
+                            <div class="sig-item"><span>Robustesse</span><span>{{ signature.signaux.robustesse }}</span></div>
         </div>
 
         <div class="signature-meta">
@@ -306,4 +347,4 @@
     <a href="/" class="back">← Nouvelle analyse</a>
     <a href="/dashboard" class="back back-alt">📊 Dashboard</a>
 </body>
-                               </html>
+</html>
