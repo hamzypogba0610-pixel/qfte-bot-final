@@ -1,7 +1,7 @@
 """
 Module de calibration avancée QFTE V23.0.
-Contient 4 calibrateurs + QFTE Fusion + Bayesian Model Averaging.
-Version AVEC time-decay weighting et BMA.
+Contient 4 calibrateurs + QFTE Fusion + BMA + Attention contextuelle.
+Version AVEC time-decay weighting, BMA et attention.
 
 Pur Python — aucune dépendance externe.
 """
@@ -262,7 +262,6 @@ def intervalle_confiance(p, n_obs=0, force=20, z=1.96):
 # 7. ✨ BAYESIAN MODEL AVERAGING (BMA) ✨
 # ============================================================
 def _log_loss_source(probas, ys, ws):
-    """Log-loss pondéré pour une source unique."""
     eps = 1e-9
     n = len(ys)
     if n == 0: return 1.0
@@ -275,23 +274,9 @@ def _log_loss_source(probas, ys, ws):
 
 
 def calculer_poids_bma(donnees, poids_defaut=None, lissage=0.15):
-    """
-    ✨ Bayesian Model Averaging ✨
-    Apprend les poids optimaux des 3 sources (Marché / Poisson / Sharp)
-    à partir de l'historique.
-
-    Paramètres :
-      donnees : dict { "marche": [...], "poisson": [...], "sharp": [...],
-                       "y": [...], "w": [...] }
-      poids_defaut : dict de repli si l'historique est insuffisant
-      lissage : force du shrinkage vers les poids par défaut (0.0 = aucun, 1.0 = total)
-
-    Retourne : dict { "marche": w1, "poisson": w2, "sharp": w3 }
-    """
     if poids_defaut is None:
         poids_defaut = {"marche": 0.40, "poisson": 0.45, "sharp": 0.15}
 
-    # Pas assez de données → poids par défaut
     n = len(donnees.get("y", []))
     if n < 15:
         return dict(poids_defaut)
@@ -303,7 +288,6 @@ def calculer_poids_bma(donnees, poids_defaut=None, lissage=0.15):
     ll_poisson = _log_loss_source(donnees["poisson"], ys, ws)
     ll_sharp = _log_loss_source(donnees["sharp"], ys, ws)
 
-    # Poids = inverse du log-loss (softmax inverse)
     eps = 1e-6
     inv_m = 1.0 / (ll_marche + eps)
     inv_p = 1.0 / (ll_poisson + eps)
@@ -314,12 +298,10 @@ def calculer_poids_bma(donnees, poids_defaut=None, lissage=0.15):
     w_p = inv_p / total
     w_s = inv_s / total
 
-    # Shrinkage vers les poids par défaut (évite les extrêmes)
     w_m = (1 - lissage) * w_m + lissage * poids_defaut["marche"]
     w_p = (1 - lissage) * w_p + lissage * poids_defaut["poisson"]
     w_s = (1 - lissage) * w_s + lissage * poids_defaut["sharp"]
 
-    # Normalisation finale
     t = w_m + w_p + w_s
     return {
         "marche": round(w_m / t, 4),
@@ -330,4 +312,68 @@ def calculer_poids_bma(donnees, poids_defaut=None, lissage=0.15):
         "log_loss_sharp": round(ll_sharp, 4),
         "n_obs": n,
         "source_apprise": True,
+    }
+
+
+# ============================================================
+# 8. ✨ ATTENTION CONTEXTUELLE ✨
+# ============================================================
+def calculer_attention(contextes):
+    """
+    Calcule un score d'attention pour chaque source (marché/poisson/sharp)
+    selon 5 signaux contextuels. Plus le signal est fort, plus la source
+    correspondante reçoit d'attention.
+
+    contextes : dict avec
+      - coherence   : 0-1 (cohérence des cotes ouv/ferm)
+      - liquidite   : 0-1 (volume normalisé)
+      - mouvement   : 0-1 (mouvement de cote normalisé)
+      - forme_nette : 0-1 (clarté de la forme entre les 2 équipes)
+      - h2h_net     : 0-1 (clarté du H2H)
+
+    Retourne : dict { "marche": a1, "poisson": a2, "sharp": a3 } normalisés
+    """
+    coh = contextes.get("coherence", 0.5)
+    liq = contextes.get("liquidite", 0.5)
+    mvt = contextes.get("mouvement", 0.5)
+    forme = contextes.get("forme_nette", 0.5)
+    h2h = contextes.get("h2h_net", 0.5)
+
+    # --- Marché : dépend surtout de la cohérence + liquidité + peu de mouvement
+    a_marche = 0.5 * coh + 0.3 * liq + 0.2 * (1 - mvt)
+
+    # --- Poisson : dépend surtout de la forme nette + H2H + faible cohérence
+    a_poisson = 0.5 * forme + 0.3 * h2h + 0.2 * (1 - coh)
+
+    # --- Sharp : dépend surtout du mouvement + liquidité
+    a_sharp = 0.6 * mvt + 0.3 * liq + 0.1 * coh
+
+    eps = 1e-6
+    total = a_marche + a_poisson + a_sharp + eps
+
+    return {
+        "marche": round(a_marche / total, 4),
+        "poisson": round(a_poisson / total, 4),
+        "sharp": round(a_sharp / total, 4),
+    }
+
+
+def combiner_bma_attention(poids_bma, poids_attention, alpha=0.5):
+    """
+    Combine les poids BMA (appris) et les poids Attention (contextuels).
+    alpha = 0.5 → 50% BMA / 50% Attention
+    alpha = 0.7 → favorise BMA
+    alpha = 0.3 → favorise Attention
+
+    Retourne : dict { "marche": w, "poisson": w, "sharp": w } normalisés
+    """
+    w_m = alpha * poids_bma.get("marche", 0.4) + (1 - alpha) * poids_attention.get("marche", 0.4)
+    w_p = alpha * poids_bma.get("poisson", 0.45) + (1 - alpha) * poids_attention.get("poisson", 0.45)
+    w_s = alpha * poids_bma.get("sharp", 0.15) + (1 - alpha) * poids_attention.get("sharp", 0.15)
+
+    t = w_m + w_p + w_s or 1.0
+    return {
+        "marche": round(w_m / t, 4),
+        "poisson": round(w_p / t, 4),
+        "sharp": round(w_s / t, 4),
     }
