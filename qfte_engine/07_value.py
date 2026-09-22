@@ -5,9 +5,6 @@ def detecter_value(data):
 
     cote_1x2 = float(match.get("cote_actuelle", 2.0))
     cote_ah = float(match.get("cote_ah", cote_1x2))
-
-    # --- Vérification de cohérence ---
-    # 1X2 Domicile et HA -0.5 sont quasi identiques → cotes proches
     incoherence = abs(cote_1x2 - cote_ah) > 0.15
 
     for m in marches:
@@ -18,27 +15,28 @@ def detecter_value(data):
 
         ev_net = (proba_calibree * cote) - 1
 
-        # Plafond réaliste (±8%)
-        ev_net = max(-0.08, min(0.08, ev_net))
+        # Plafond élargi : ±12% (au lieu de ±8%) pour permettre
+        # à la Couche A d'amplifier ensuite
+        ev_net = max(-0.12, min(0.12, ev_net))
 
-        # Incohérence détectée sur le marché HA
         if incoherence and "Handicap" in nom_marche:
             m["ev_net"] = 0.0
             m["niveau"] = "AVOID"
             m["stake_brut"] = 0.0
-            m["alerte"] = "⚠️ Cotes incohérentes (1X2 vs HA)"
+            m["alerte"] = "⚠️ Cotes incohérentes"
             resultat.append(m)
             continue
 
-        if ev_net >= 0.05 and fiabilite >= 0.80:
+        # Seuils agressifs (Couche A va encore amplifier ensuite)
+        if ev_net >= 0.04 and fiabilite >= 0.78:
             niveau = "ELITE"
             stake = 1.5
-        elif ev_net >= 0.04 and fiabilite >= 0.78:
+        elif ev_net >= 0.03 and fiabilite >= 0.75:
             niveau = "PREMIUM"
             stake = 1.0
-        elif ev_net >= 0.03 and fiabilite >= 0.75:
+        elif ev_net >= 0.02 and fiabilite >= 0.72:
             niveau = "GOOD"
-            stake = 0.8
+            stake = 0.7
         elif ev_net >= 0.0:
             niveau = "SURVEILLANCE"
             stake = 0.3
