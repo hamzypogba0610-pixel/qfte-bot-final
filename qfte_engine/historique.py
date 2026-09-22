@@ -1,9 +1,11 @@
 import json
 import os
+import math
 from datetime import datetime
 
 FICHIER_HISTORIQUE = "historique.json"
 BANKROLL_DEPART = 1000.0
+DEMI_VIE_JOURS = 30.0  # Time-decay : match d'il y a 30j = poids 0.5
 
 
 def charger_historique():
@@ -22,6 +24,26 @@ def _ecrire_historique(historique):
             json.dump(historique, f, ensure_ascii=False, indent=2)
     except IOError:
         pass
+
+
+def _poids_temporel(date_str):
+    """
+    Time-decay : retourne un poids entre 0 et 1 selon la récence.
+    poids = exp(-âge_jours / demi_vie)
+      - Match du jour     → 1.00
+      - Match il y a 30j  → 0.37
+      - Match il y a 90j  → 0.05
+    """
+    if not date_str:
+        return 0.5
+    try:
+        date_match = datetime.fromisoformat(date_str.replace("Z", "").split("+")[0])
+        age_jours = (datetime.now() - date_match).total_seconds() / 86400.0
+        if age_jours < 0:
+            age_jours = 0
+        return math.exp(-age_jours / DEMI_VIE_JOURS)
+    except (ValueError, TypeError):
+        return 0.5
 
 
 def sauvegarder_analyse(match, resultat):
@@ -68,7 +90,6 @@ def _pari_gagne(marche, selection, score_home, score_away):
     if "Handicap" in marche:
         return score_home > score_away
 
-    # Over/Under 2.5 : on regarde la sélection (Over ou Under)
     if "Over/Under 2.5" in marche or ("2.5" in marche and "Total" not in marche):
         if "under" in selection:
             return total < 2.5
@@ -78,14 +99,12 @@ def _pari_gagne(marche, selection, score_home, score_away):
     if "BTTS" in marche:
         return score_home >= 1 and score_away >= 1
 
-    # Basket
     if "Money Line" in marche:
         return score_home > score_away
 
     if "Spread" in marche:
         return (score_home - score_away) > 4.5
 
-    # Total Points (Over/Under 180.5)
     if "Total Points" in marche:
         if "under" in selection:
             return total < 180.5
@@ -132,6 +151,7 @@ def enregistrer_resultat(id_unique, score_home, score_away, marches_joues):
 
 
 def calculer_roi():
+    """ROI calculé à parts égales (pas de time-decay) — mesure la réalité."""
     historique = charger_historique()
     total_paris = 0
     paris_gagnes = 0
@@ -220,6 +240,11 @@ def calculer_statistiques():
 
 
 def recuperer_donnees_apprentissage():
+    """
+    Extrait les paires (proba_prédite, résultat) + un POIDS TEMPOREL
+    pour chaque marché à partir des analyses passées ayant un résultat.
+    Utilisé pour entraîner les calibrateurs avec time-decay.
+    """
     historique = charger_historique()
     data = {}
 
@@ -230,6 +255,7 @@ def recuperer_donnees_apprentissage():
 
         score_h = res.get("score_home", 0)
         score_a = res.get("score_away", 0)
+        poids = _poids_temporel(h.get("date", ""))
 
         for reco in h.get("recommandations", []):
             marche = reco.get("marche", "")
@@ -246,8 +272,9 @@ def recuperer_donnees_apprentissage():
             ) else 0
 
             if marche not in data:
-                data[marche] = {"xs": [], "ys": []}
+                data[marche] = {"xs": [], "ys": [], "ws": []}
             data[marche]["xs"].append(proba)
             data[marche]["ys"].append(outcome)
+            data[marche]["ws"].append(poids)
 
     return data
