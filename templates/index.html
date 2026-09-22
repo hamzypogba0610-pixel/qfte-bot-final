@@ -34,6 +34,17 @@
         <label>Compétition</label>
         <input type="text" name="competition" placeholder="Ex: Ligue 1 / NBA / ATP" required>
 
+        <div id="bloc_surface" style="display: none;">
+            <label>🎾 Surface (tennis uniquement)</label>
+            <select name="surface" id="select_surface">
+                <option value="dur">Dur (US Open, Australian Open, ATP Masters)</option>
+                <option value="terre">Terre battue (Roland-Garros, Monte-Carlo)</option>
+                <option value="gazon">Gazon (Wimbledon, Halle)</option>
+                <option value="indoor">Indoor (Paris Masters, ATP Finals)</option>
+            </select>
+            <div class="aide">Impacte fortement les probabilités (Nadal sur terre ≠ Nadal sur gazon)</div>
+        </div>
+
         <label id="label_equipe1">Équipe 1 (à domicile)</label>
         <input type="text" name="equipe1" required>
 
@@ -104,6 +115,7 @@
 
     <script>
         const selectSport = document.getElementById("select_sport");
+        const blocSurface = document.getElementById("bloc_surface");
 
         function majLabels() {
             const sport = selectSport.value;
@@ -128,6 +140,7 @@
             const aideSd = document.getElementById("aide_scores_dom");
 
             if (sport === "tennis") {
+                blocSurface.style.display = "block";
                 eq1.textContent = "Joueur 1";
                 eq2.textContent = "Joueur 2";
                 c1.textContent = "Cote Joueur 1 — Ouverture / Fermeture";
@@ -148,6 +161,7 @@
                 bt.textContent = "Cote Score Exact Sets (ex: 2-0)";
                 aideSd.textContent = "Format : sets_pour-sets_contre (ex: 2-0, 2-1, 0-2)";
             } else if (sport === "basket") {
+                blocSurface.style.display = "none";
                 eq1.textContent = "Équipe 1 (à domicile)";
                 eq2.textContent = "Équipe 2 (à l'extérieur)";
                 c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
@@ -168,6 +182,7 @@
                 bt.textContent = "Cote Money Line Domicile";
                 aideSd.textContent = "Format : points_pour-points_contre (ex: 108-102)";
             } else {
+                blocSurface.style.display = "none";
                 eq1.textContent = "Équipe 1 (à domicile)";
                 eq2.textContent = "Équipe 2 (à l'extérieur)";
                 c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
@@ -194,4 +209,4 @@
         majLabels();
     </script>
 </body>
-    </html>
+            </html>
