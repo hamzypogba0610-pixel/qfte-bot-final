@@ -1,7 +1,8 @@
 """
 Calibration avancée QFTE V23.0.
-Combine hybride multi-source + 3 calibrateurs + QFTE FUSION + BMA.
-Version AVEC time-decay weighting et Bayesian Model Averaging.
+Combine hybride multi-source + 3 calibrateurs + QFTE FUSION
++ BMA (Bayesian Model Averaging) + Attention contextuelle.
+Version AVEC time-decay weighting.
 """
 from qfte_engine.calibrateurs import (
     entrainer_ensemble,
@@ -10,6 +11,8 @@ from qfte_engine.calibrateurs import (
     shrinkage_bayesien,
     intervalle_confiance,
     calculer_poids_bma,
+    calculer_attention,
+    combiner_bma_attention,
 )
 from qfte_engine.historique import (
     recuperer_donnees_apprentissage,
@@ -24,10 +27,7 @@ POIDS_DEFAUT = {"marche": 0.40, "poisson": 0.45, "sharp": 0.15}
 
 
 def _poids_hybrides_fallback(volume, mouvement, cote_ok):
-    """
-    Poids contextuels (méthode classique) — utilisés en fallback
-    quand l'historique BMA n'est pas encore suffisant.
-    """
+    """Poids contextuels (méthode classique) — fallback si BMA inactif."""
     w_marche = POIDS_DEFAUT["marche"]
     w_poisson = POIDS_DEFAUT["poisson"]
     w_sharp = POIDS_DEFAUT["sharp"]
@@ -42,7 +42,6 @@ def _poids_hybrides_fallback(volume, mouvement, cote_ok):
         w_marche += 0.15
         w_poisson -= 0.15
 
-    # Bornes pour éviter les poids négatifs
     w_marche = max(0.10, w_marche)
     w_poisson = max(0.10, w_poisson)
     w_sharp = max(0.05, w_sharp)
@@ -52,8 +51,61 @@ def _poids_hybrides_fallback(volume, mouvement, cote_ok):
         "marche": w_marche / total,
         "poisson": w_poisson / total,
         "sharp": w_sharp / total,
-        "hist": 0.10,  # réservé au calibrateur historique
+        "hist": 0.10,
         "source": "fallback_contextuel",
+    }
+
+
+def _extraire_signaux_contextuels(data, volume, mouvement):
+    """
+    Extrait les 5 signaux contextuels pour l'Attention.
+    Retourne un dict normalisé entre 0 et 1.
+    """
+    match = data.get("match", {})
+    contexte = data.get("contexte", {})
+    cotes_ctx = contexte.get("cotes", {})
+    forme = contexte.get("forme", {})
+    h2h = contexte.get("h2h", {})
+
+    # --- Signal 1 : cohérence des cotes (ouv vs ferm) ---
+    co = float(match.get("cote_ouverture", 2.0) or 2.0)
+    cf = float(match.get("cote_actuelle", 2.0) or 2.0)
+    ecart_cotes = abs(cf - co) / co if co > 0 else 0
+    coherence = max(0.0, 1.0 - ecart_cotes / 0.15)  # 1.0 si parfait, 0 si écart > 15%
+
+    # --- Signal 2 : liquidité (volume normalisé) ---
+    liquidite = min(1.0, volume / 200000)
+
+    # --- Signal 3 : mouvement de cote (normalisé) ---
+    mvt_abs = abs(mouvement)
+    mouvement_norm = min(1.0, mvt_abs / 0.20)
+
+    # --- Signal 4 : forme nette (écart forme dom vs ext) ---
+    f_dom = float(forme.get("dom_finale", 0))
+    f_ext = float(forme.get("ext_finale", 0))
+    ecart_forme = abs(f_dom - f_ext)
+    forme_nette = min(1.0, ecart_forme / 1.5)
+
+    # --- Signal 5 : H2H net (clarté de la domination) ---
+    if h2h.get("n", 0) >= 3:
+        v_dom = h2h.get("v_dom", 0)
+        v_ext = h2h.get("v_ext", 0)
+        nuls = h2h.get("nuls", 0)
+        total = v_dom + v_ext + nuls
+        if total > 0:
+            domination = max(v_dom, v_ext) / total
+            h2h_net = max(0.0, (domination - 0.33) / 0.67)
+        else:
+            h2h_net = 0.3
+    else:
+        h2h_net = 0.3
+
+    return {
+        "coherence": round(coherence, 4),
+        "liquidite": round(liquidite, 4),
+        "mouvement": round(mouvement_norm, 4),
+        "forme_nette": round(forme_nette, 4),
+        "h2h_net": round(h2h_net, 4),
     }
 
 
@@ -68,7 +120,7 @@ def calibrer_probabilites(data):
     marge_estimee = float(data.get("marge_estimee", 0.05))
     cote_ok = abs(cf - co) <= 0.15
 
-    # ---------- Chargement des calibrateurs (avec time-decay) ----------
+    # ---------- Chargement des calibrateurs (time-decay) ----------
     apprentissage = recuperer_donnees_apprentissage()
     ensembles = {}
     for nom_marche, donnees in apprentissage.items():
@@ -79,36 +131,43 @@ def calibrer_probabilites(data):
             )
     data["calibrateurs_actifs"] = len(ensembles)
 
-    # ---------- ✨ BMA : apprentissage des poids optimaux ----------
+    # ---------- BMA : poids appris ----------
     donnees_bma = recuperer_donnees_bma()
     poids_bma = {}
     bma_actif = False
-
     for nom_marche, donnees in donnees_bma.items():
         if len(donnees["y"]) >= 15:
             poids_bma[nom_marche] = calculer_poids_bma(
                 donnees, poids_defaut=POIDS_DEFAUT, lissage=0.15
             )
             bma_actif = True
-
     data["bma_actif"] = bma_actif
-    data["bma_marches"] = list(poids_bma.keys())
 
-    # Poids globaux BMA (moyenne pondérée de tous les marchés vus)
+    # Poids BMA global (moyenne sur les marchés vus)
     if poids_bma:
         w_m = sum(p["marche"] for p in poids_bma.values()) / len(poids_bma)
         w_p = sum(p["poisson"] for p in poids_bma.values()) / len(poids_bma)
         w_s = sum(p["sharp"] for p in poids_bma.values()) / len(poids_bma)
-        t = w_m + w_p + w_s
-        poids_global_bma = {
-            "marche": w_m / t,
-            "poisson": w_p / t,
-            "sharp": w_s / t,
-            "hist": 0.10,
-            "source": "BMA",
-        }
+        t = w_m + w_p + w_s or 1.0
+        poids_global_bma = {"marche": w_m / t, "poisson": w_p / t, "sharp": w_s / t}
     else:
-        poids_global_bma = None
+        poids_global_bma = dict(POIDS_DEFAUT)
+
+    # ---------- ✨ Attention contextuelle ----------
+    signaux = _extraire_signaux_contextuels(data, volume, mouvement)
+    attention = calculer_attention(signaux)
+    data["attention"] = attention
+    data["signaux_contexte"] = signaux
+
+    # ---------- ✨ Combinaison BMA × Attention ----------
+    # Si BMA actif → 60% BMA / 40% Attention
+    # Sinon → 30% BMA (défaut) / 70% Attention
+    alpha = 0.6 if bma_actif else 0.3
+    poids_global = combiner_bma_attention(poids_global_bma, attention, alpha=alpha)
+    poids_global["hist"] = 0.10
+    poids_global["source"] = "BMA×Attention" if bma_actif else "Attention (fallback)"
+    poids_global["alpha_bma"] = alpha
+    data["poids_global"] = poids_global
 
     # ---------- Boucle par marché ----------
     resultat = []
@@ -128,24 +187,28 @@ def calibrer_probabilites(data):
         bonus_sharp = max(-0.03, min(0.03, -mouvement * 0.5))
         proba_sharp = max(0.05, min(0.95, proba_marche + bonus_sharp))
 
-        # Source 4 : historique (calibrateur ensemble)
+        # Source 4 : historique (calibrateur)
         proba_hist = None
         if nom_marche in ensembles:
             proba_hist = calibrer_ensemble(proba_poisson_finale, ensembles[nom_marche])
 
-        # ---------- Choix des poids : BMA ou fallback ----------
+        # ---------- Poids pour ce marché spécifique ----------
         if nom_marche in poids_bma:
-            poids = dict(poids_bma[nom_marche])
-            poids["hist"] = 0.10
-        elif poids_global_bma is not None:
-            poids = dict(poids_global_bma)
+            # Poids spécifiques appris pour ce marché
+            pb = poids_bma[nom_marche]
+            pa = attention
+            poids = combiner_bma_attention(pb, pa, alpha=alpha)
         else:
-            poids = _poids_hybrides_fallback(volume, mouvement, cote_ok)
+            # Sinon poids globaux
+            poids = {
+                "marche": poids_global["marche"],
+                "poisson": poids_global["poisson"],
+                "sharp": poids_global["sharp"],
+            }
 
-        # Normalisation après ajout du poids historique
-        w_total = poids["marche"] + poids["poisson"] + poids["sharp"]
+        # Réservation de 10% pour l'historique si dispo
+        w_total = poids["marche"] + poids["poisson"] + poids["sharp"] or 1.0
         if proba_hist is not None:
-            # On garde 90% du poids pour les 3 sources, 10% pour l'historique
             poids["marche"] = (poids["marche"] / w_total) * 0.90
             poids["poisson"] = (poids["poisson"] / w_total) * 0.90
             poids["sharp"] = (poids["sharp"] / w_total) * 0.90
@@ -156,7 +219,9 @@ def calibrer_probabilites(data):
             poids["sharp"] = poids["sharp"] / w_total
             poids["hist"] = 0.0
 
-        # ---------- Hybridation pondérée ----------
+        poids["source"] = poids_global["source"]
+
+        # ---------- Hybridation ----------
         if proba_hist is not None:
             proba_hybride = (
                 poids["marche"] * proba_marche
@@ -171,17 +236,15 @@ def calibrer_probabilites(data):
                 + poids["sharp"] * proba_sharp
             )
 
-        # ---------- ✨ QFTE FUSION ----------
+        # ---------- QFTE Fusion ----------
         force_signal = poids["marche"] + poids["poisson"]
-        sharp_sig = -mouvement * 0.5
         proba_fusion = qfte_fusion_calibration(
             proba_hybride,
             force_signal=force_signal,
             marge_marche=marge_estimee,
-            sharp_signal=sharp_sig,
+            sharp_signal=-mouvement * 0.5,
         )
 
-        # ---------- Shrinkage bayésien final ----------
         proba_finale = shrinkage_bayesien(proba_fusion, force=20)
 
         # ---------- Intervalle de confiance ----------
