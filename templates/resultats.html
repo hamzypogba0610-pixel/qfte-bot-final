@@ -47,12 +47,25 @@
         .ctx-val { font-weight: bold; color: #4ade80; }
         .ctx-val.neg { color: #ef4444; }
         .ctx-val.neutre { color: #facc15; }
-        .signature-box { margin-top: 30px; padding: 18px; background: linear-gradient(135deg, #0a0a0a, #141414); border-radius: 10px; border: 1px solid #2a2a2a; text-align: center; }
-        .signature-sceau { color: #facc15; font-weight: bold; font-size: 15px; letter-spacing: 1px; margin-bottom: 10px; }
-        .signature-credo { color: #a78bfa; font-style: italic; font-size: 14px; margin-bottom: 12px; }
-        .signature-meta { color: #6b7280; font-size: 12px; margin-bottom: 6px; }
+        .signature-box { margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #0a0a0a, #141414); border-radius: 12px; border: 2px solid #2a2a2a; text-align: center; }
+        .sig-diamant { border-color: #a78bfa; box-shadow: 0 0 20px rgba(167,139,250,0.3); }
+        .sig-or { border-color: #facc15; box-shadow: 0 0 15px rgba(250,204,21,0.25); }
+        .sig-argent { border-color: #9ca3af; }
+        .sig-bronze { border-color: #b45309; }
+        .sig-verre { border-color: #4b5563; opacity: 0.8; }
+        .signature-sceau { color: #facc15; font-weight: bold; font-size: 15px; letter-spacing: 1.5px; margin-bottom: 15px; }
+        .icp-container { background: rgba(74,222,128,0.05); border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; margin-bottom: 15px; }
+        .icp-label { color: #9ca3af; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+        .icp-valeur { font-size: 32px; font-weight: bold; color: #4ade80; line-height: 1; margin-bottom: 6px; }
+        .icp-niveau { font-size: 16px; font-weight: bold; color: #facc15; letter-spacing: 2px; }
+        .signature-credo { color: #a78bfa; font-style: italic; font-size: 14px; margin: 15px 0; padding: 0 10px; }
+        .signaux-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin: 15px 0; font-size: 12px; }
+        .sig-item { display: flex; justify-content: space-between; padding: 4px 8px; background: #0a0a0a; border-radius: 4px; }
+        .sig-item span:first-child { color: #9ca3af; }
+        .sig-item span:last-child { color: #4ade80; font-weight: bold; font-family: monospace; }
+        .signature-meta { color: #6b7280; font-size: 11px; margin-top: 10px; }
         .signature-empreinte { color: #4ade80; font-weight: bold; font-family: monospace; }
-        .signature-full { color: #374151; font-size: 10px; font-family: monospace; word-break: break-all; }
+        .signature-full { color: #374151; font-size: 9px; font-family: monospace; word-break: break-all; margin-top: 3px; }
     </style>
 </head>
 <body>
@@ -256,18 +269,41 @@
     {% endif %}
 
     {% if signature %}
-    <div class="signature-box">
+    <div class="signature-box sig-{{ signature.niveau|lower }}">
         <div class="signature-sceau">{{ signature.sceau }}</div>
+
+        <div class="icp-container">
+            <div class="icp-label">Indice de Confiance Partenariale</div>
+            <div class="icp-valeur">{{ signature.icp }} / 100</div>
+            <div class="icp-niveau">{{ signature.emoji }} {{ signature.niveau }}</div>
+        </div>
+
         <div class="signature-credo">« {{ signature.credo }} »</div>
+
+        <div class="signaux-grid">
+            <div class="sig-item"><span>Fiabilité</span><span>{{ signature.signaux.fiabilite }}</span></div>
+            <div class="sig-item"><span>Validation</span><span>{{ signature.signaux.validation }}</span></div>
+            <div class="sig-item"><span>Contexte</span><span>{{ signature.signaux.contexte }}</span></div>
+            <div class="sig-item"><span>Calibration</span><span>{{ signature.signaux.calibration }}</span></div>
+            <div class="sig-item"><span>Liquidité</span><span>{{ signature.signaux.liquidite }}</span></div>
+            <div class="sig-item"><span>Consensus</span><span>{{ signature.signaux.consensus }}</span></div>
+            <div class="sig-item"><span>Robustesse</span><span>{{ signature.signaux.robustesse }}</span></div>
+        </div>
+
         <div class="signature-meta">
-            Empreinte : <span class="signature-empreinte">{{ signature.empreinte_courte }}</span>
+            🔐 Empreinte match : <span class="signature-empreinte">{{ signature.empreinte_match_courte }}</span>
             · {{ signature.timestamp[:19].replace('T', ' ') }}
         </div>
-        <div class="signature-full">{{ signature.empreinte }}</div>
+        <div class="signature-meta">
+            🤝 Empreinte partenariat : <span class="signature-empreinte">{{ signature.empreinte_partenariat_courte }}</span>
+            · depuis {{ signature.partenariat_depuis }}
+        </div>
+        <div class="signature-full">{{ signature.empreinte_match }}</div>
+        <div class="signature-full">{{ signature.empreinte_partenariat }}</div>
     </div>
     {% endif %}
 
     <a href="/" class="back">← Nouvelle analyse</a>
     <a href="/dashboard" class="back back-alt">📊 Dashboard</a>
 </body>
-            </html>
+                               </html>
