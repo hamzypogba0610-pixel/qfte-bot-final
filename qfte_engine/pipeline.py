@@ -7,6 +7,7 @@ _market = importlib.import_module("qfte_engine.03_market")
 _sport = importlib.import_module("qfte_engine.04_sport")
 _validation = importlib.import_module("qfte_engine.12_validation")
 _calibration = importlib.import_module("qfte_engine.05_calibration")
+_copula = importlib.import_module("qfte_engine.17_copula")
 _scores = importlib.import_module("qfte_engine.06_scores")
 _value = importlib.import_module("qfte_engine.07_value")
 _risk = importlib.import_module("qfte_engine.08_risk")
@@ -25,12 +26,13 @@ def analyser_match(match):
     data = _sport.analyser_sport(data)
     data = _validation.valider_coherence(data)
     data = _calibration.calibrer_probabilites(data)
+    data = _copula.appliquer_copule(data)             # ✨ Copula Calibration
     data = _scores.predire_scores(data)
     data = _value.detecter_value(data)
     data = _risk.gerer_risques(data)
     data = _discipline.appliquer_discipline(data)
     data = _output.formater_recommandation(data)
-    data = _partenariat.apposer_signature(data)      # Σ couche partenariat
-    data = _amplificateur.amplifier(data)            # ⚡ Couche A amplificateur
+    data = _partenariat.apposer_signature(data)
+    data = _amplificateur.amplifier(data)
     data = _monitor.surveiller(data)
     return data
