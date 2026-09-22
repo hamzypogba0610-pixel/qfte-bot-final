@@ -2,7 +2,8 @@
 Calibration avancée QFTE V23.0.
 Combine hybride multi-source + 3 calibrateurs + QFTE FUSION
 + BMA (Bayesian Model Averaging) + Attention contextuelle.
-Version AVEC time-decay weighting.
+
+✨ VERSION 3 : Isolation par sport (anti-contamination) ✨
 """
 from qfte_engine.calibrateurs import (
     entrainer_ensemble,
@@ -20,14 +21,16 @@ from qfte_engine.historique import (
 )
 
 
-# ============================================================
-# POIDS PAR DÉFAUT (utilisés si l'historique est insuffisant)
-# ============================================================
+SEPARATEUR = "\u0001"
 POIDS_DEFAUT = {"marche": 0.40, "poisson": 0.45, "sharp": 0.15}
 
 
+def _cle_apprentissage(sport, marche):
+    """Reconstruit la clé préfixée par sport utilisée dans l'historique."""
+    return "{}{}{}".format(sport or "inconnu", SEPARATEUR, marche or "")
+
+
 def _poids_hybrides_fallback(volume, mouvement, cote_ok):
-    """Poids contextuels (méthode classique) — fallback si BMA inactif."""
     w_marche = POIDS_DEFAUT["marche"]
     w_poisson = POIDS_DEFAUT["poisson"]
     w_sharp = POIDS_DEFAUT["sharp"]
@@ -57,36 +60,27 @@ def _poids_hybrides_fallback(volume, mouvement, cote_ok):
 
 
 def _extraire_signaux_contextuels(data, volume, mouvement):
-    """
-    Extrait les 5 signaux contextuels pour l'Attention.
-    Retourne un dict normalisé entre 0 et 1.
-    """
     match = data.get("match", {})
     contexte = data.get("contexte", {})
     cotes_ctx = contexte.get("cotes", {})
     forme = contexte.get("forme", {})
     h2h = contexte.get("h2h", {})
 
-    # --- Signal 1 : cohérence des cotes (ouv vs ferm) ---
     co = float(match.get("cote_ouverture", 2.0) or 2.0)
     cf = float(match.get("cote_actuelle", 2.0) or 2.0)
     ecart_cotes = abs(cf - co) / co if co > 0 else 0
-    coherence = max(0.0, 1.0 - ecart_cotes / 0.15)  # 1.0 si parfait, 0 si écart > 15%
+    coherence = max(0.0, 1.0 - ecart_cotes / 0.15)
 
-    # --- Signal 2 : liquidité (volume normalisé) ---
     liquidite = min(1.0, volume / 200000)
 
-    # --- Signal 3 : mouvement de cote (normalisé) ---
     mvt_abs = abs(mouvement)
     mouvement_norm = min(1.0, mvt_abs / 0.20)
 
-    # --- Signal 4 : forme nette (écart forme dom vs ext) ---
     f_dom = float(forme.get("dom_finale", 0))
     f_ext = float(forme.get("ext_finale", 0))
     ecart_forme = abs(f_dom - f_ext)
     forme_nette = min(1.0, ecart_forme / 1.5)
 
-    # --- Signal 5 : H2H net (clarté de la domination) ---
     if h2h.get("n", 0) >= 3:
         v_dom = h2h.get("v_dom", 0)
         v_ext = h2h.get("v_ext", 0)
@@ -106,12 +100,14 @@ def _extraire_signaux_contextuels(data, volume, mouvement):
         "mouvement": round(mouvement_norm, 4),
         "forme_nette": round(forme_nette, 4),
         "h2h_net": round(h2h_net, 4),
-    }
+}
+
 
 
 def calibrer_probabilites(data):
     marches = data.get("marches", [])
     match = data.get("match", {})
+    sport = match.get("sport", "football")
 
     volume = float(match.get("volume", 50000) or 50000)
     co = float(match.get("cote_ouverture", 2.0) or 2.0)
@@ -120,30 +116,37 @@ def calibrer_probabilites(data):
     marge_estimee = float(data.get("marge_estimee", 0.05))
     cote_ok = abs(cf - co) <= 0.15
 
-    # ---------- Chargement des calibrateurs (time-decay) ----------
+    # ---------- Chargement des calibrateurs (time-decay, préfixés par sport) ----------
     apprentissage = recuperer_donnees_apprentissage()
     ensembles = {}
-    for nom_marche, donnees in apprentissage.items():
+    for cle, donnees in apprentissage.items():
         if len(donnees["xs"]) >= 20:
             weights = donnees.get("ws", None)
-            ensembles[nom_marche] = entrainer_ensemble(
+            ensembles[cle] = entrainer_ensemble(
                 donnees["xs"], donnees["ys"], weights
             )
-    data["calibrateurs_actifs"] = len(ensembles)
+    # On ne compte que les calibrateurs du sport courant
+    calibrateurs_sport = sum(
+        1 for k in ensembles.keys()
+        if isinstance(k, str) and k.startswith(sport + SEPARATEUR)
+    )
+    data["calibrateurs_actifs"] = calibrateurs_sport
 
-    # ---------- BMA : poids appris ----------
+    # ---------- BMA : poids appris par sport ----------
     donnees_bma = recuperer_donnees_bma()
     poids_bma = {}
     bma_actif = False
-    for nom_marche, donnees in donnees_bma.items():
+    for cle, donnees in donnees_bma.items():
+        if not isinstance(cle, str) or not cle.startswith(sport + SEPARATEUR):
+            continue
         if len(donnees["y"]) >= 15:
-            poids_bma[nom_marche] = calculer_poids_bma(
+            poids_bma[cle] = calculer_poids_bma(
                 donnees, poids_defaut=POIDS_DEFAUT, lissage=0.15
             )
             bma_actif = True
     data["bma_actif"] = bma_actif
 
-    # Poids BMA global (moyenne sur les marchés vus)
+    # Poids BMA global (moyenne sur les marchés du sport courant)
     if poids_bma:
         w_m = sum(p["marche"] for p in poids_bma.values()) / len(poids_bma)
         w_p = sum(p["poisson"] for p in poids_bma.values()) / len(poids_bma)
@@ -153,26 +156,26 @@ def calibrer_probabilites(data):
     else:
         poids_global_bma = dict(POIDS_DEFAUT)
 
-    # ---------- ✨ Attention contextuelle ----------
+    # ---------- Attention contextuelle ----------
     signaux = _extraire_signaux_contextuels(data, volume, mouvement)
     attention = calculer_attention(signaux)
     data["attention"] = attention
     data["signaux_contexte"] = signaux
 
-    # ---------- ✨ Combinaison BMA × Attention ----------
-    # Si BMA actif → 60% BMA / 40% Attention
-    # Sinon → 30% BMA (défaut) / 70% Attention
+    # ---------- Combinaison BMA × Attention ----------
     alpha = 0.6 if bma_actif else 0.3
     poids_global = combiner_bma_attention(poids_global_bma, attention, alpha=alpha)
     poids_global["hist"] = 0.10
     poids_global["source"] = "BMA×Attention" if bma_actif else "Attention (fallback)"
     poids_global["alpha_bma"] = alpha
+    poids_global["sport"] = sport
     data["poids_global"] = poids_global
 
     # ---------- Boucle par marché ----------
     resultat = []
     for m in marches:
         nom_marche = m.get("nom", "")
+        cle_marche = _cle_apprentissage(sport, nom_marche)
         cote = float(m.get("cote", 2.0) or 2.0)
         proba_poisson = float(m.get("proba_juste", 0.5))
 
@@ -187,19 +190,17 @@ def calibrer_probabilites(data):
         bonus_sharp = max(-0.03, min(0.03, -mouvement * 0.5))
         proba_sharp = max(0.05, min(0.95, proba_marche + bonus_sharp))
 
-        # Source 4 : historique (calibrateur)
+        # Source 4 : historique (calibrateur du sport courant)
         proba_hist = None
-        if nom_marche in ensembles:
-            proba_hist = calibrer_ensemble(proba_poisson_finale, ensembles[nom_marche])
+        if cle_marche in ensembles:
+            proba_hist = calibrer_ensemble(proba_poisson_finale, ensembles[cle_marche])
 
-        # ---------- Poids pour ce marché spécifique ----------
-        if nom_marche in poids_bma:
-            # Poids spécifiques appris pour ce marché
-            pb = poids_bma[nom_marche]
+        # ---------- Poids pour ce marché ----------
+        if cle_marche in poids_bma:
+            pb = poids_bma[cle_marche]
             pa = attention
             poids = combiner_bma_attention(pb, pa, alpha=alpha)
         else:
-            # Sinon poids globaux
             poids = {
                 "marche": poids_global["marche"],
                 "poisson": poids_global["poisson"],
@@ -220,6 +221,7 @@ def calibrer_probabilites(data):
             poids["hist"] = 0.0
 
         poids["source"] = poids_global["source"]
+        poids["sport"] = sport
 
         # ---------- Hybridation ----------
         if proba_hist is not None:
@@ -248,7 +250,7 @@ def calibrer_probabilites(data):
         proba_finale = shrinkage_bayesien(proba_fusion, force=20)
 
         # ---------- Intervalle de confiance ----------
-        n_obs = len(apprentissage[nom_marche]["xs"]) if nom_marche in apprentissage else 0
+        n_obs = len(apprentissage[cle_marche]["xs"]) if cle_marche in apprentissage else 0
         ci_bas, ci_haut = intervalle_confiance(proba_finale, n_obs=n_obs, force=20)
 
         # ---------- Fiabilité multi-critères ----------
