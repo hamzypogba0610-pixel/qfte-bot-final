@@ -1,9 +1,11 @@
 """
 Module Copula Calibration — QFTE V23.0.
 
-Modélise les dépendances entre marchés (football et basket) via une
-copule gaussienne. Apprend les corrélations depuis l'historique et
+Modélise les dépendances entre marchés (football, basket, tennis) via
+une copule gaussienne. Apprend les corrélations depuis l'historique et
 ajuste les probabilités marginales en conséquence.
+
+✨ VERSION 3 : Isolation par sport (anti-contamination) ✨
 
 Pur Python — aucune dépendance externe.
 """
@@ -11,18 +13,13 @@ import math
 
 
 # ============================================================
-# FONCTIONS NORMALES (CDF + approximation inverse)
+# FONCTIONS NORMALES
 # ============================================================
 def norm_cdf(x):
-    """CDF de la loi normale standard."""
     return 0.5 * (1 + math.erf(x / math.sqrt(2)))
 
 
 def norm_ppf(p):
-    """
-    Approximation de l'inverse de la CDF normale (Acklam).
-    Précision ~1e-9. Suffisant pour la copule.
-    """
     if p <= 0: return -8.0
     if p >= 1: return 8.0
     if p == 0.5: return 0.0
@@ -61,10 +58,6 @@ def norm_ppf(p):
 # COPULE GAUSSIENNE BIVARIÉE
 # ============================================================
 def copule_gaussienne_bivariee(p1, p2, rho):
-    """
-    Retourne P(Y1=1, Y2=1) pour deux variables binaires de marges p1, p2
-    et de corrélation ρ via la copule gaussienne.
-    """
     if p1 <= 0 or p1 >= 1 or p2 <= 0 or p2 >= 1:
         return p1 * p2
     rho = max(-0.95, min(0.95, rho))
@@ -79,7 +72,6 @@ def copule_gaussienne_bivariee(p1, p2, rho):
 
 
 def ajuster_marginale(p_cible, p_partenaire, rho, force=0.30):
-    """Ajuste p_cible en fonction de p_partenaire et de leur corrélation."""
     if rho == 0 or p_cible <= 0 or p_cible >= 1:
         return p_cible
 
@@ -95,7 +87,7 @@ def ajuster_marginale(p_cible, p_partenaire, rho, force=0.30):
 
 
 # ============================================================
-# APPRENTISSAGE DES CORRÉLATIONS
+# APPRENTISSAGE DES CORRÉLATIONS (par sport)
 # ============================================================
 def _correlation_empirique(xs, ys):
     n = len(xs)
@@ -113,10 +105,15 @@ def _correlation_empirique(xs, ys):
 
 
 def apprendre_correlations():
-    """Apprend les corrélations empiriques depuis l'historique."""
+    """
+    Apprend les corrélations empiriques par sport.
+    Retourne un dict {(sport, marche1, marche2): rho}.
+    Les clés sont TRIÉES alphabétiquement pour marche1/marche2.
+    """
     from qfte_engine.historique import charger_historique, _pari_gagne
 
     historique = charger_historique()
+    # Structure : { (sport, date) : {marche: outcome} }
     par_date = {}
 
     for h in historique:
@@ -126,25 +123,27 @@ def apprendre_correlations():
         score_h = res.get("score_home", 0)
         score_a = res.get("score_away", 0)
         date = h.get("date", "")
-        par_date[date] = {}
+        sport = h.get("sport", "inconnu")
+        cle_date = (sport, date)
+        par_date[cle_date] = {}
 
         for reco in h.get("recommandations", []):
             marche = reco.get("marche", "")
             sel = reco.get("selection", "")
             outcome = 1 if _pari_gagne(marche, sel, score_h, score_a) else 0
-            par_date[date][marche] = outcome
+            par_date[cle_date][marche] = outcome
 
     paires = {}
-    for date, marches in par_date.items():
+    for (sport, date), marches in par_date.items():
         noms = list(marches.keys())
         for i in range(len(noms)):
             for j in range(i + 1, len(noms)):
-                m1, m2 = noms[i], noms[j]
-                cle = tuple(sorted([m1, m2]))
+                m1, m2 = sorted([noms[i], noms[j]])
+                cle = (sport, m1, m2)
                 if cle not in paires:
                     paires[cle] = ([], [])
-                paires[cle][0].append(marches[m1])
-                paires[cle][1].append(marches[m2])
+                paires[cle][0].append(marches[noms[i]])
+                paires[cle][1].append(marches[noms[j]])
 
     correlations = {}
     for cle, (xs, ys) in paires.items():
@@ -155,36 +154,60 @@ def apprendre_correlations():
     return correlations
 
 
+
 # ============================================================
-# CORRÉLATIONS PAR DÉFAUT
+# CORRÉLATIONS PAR DÉFAUT (clé = (sport, marche1, marche2))
 # ============================================================
 # --- Football ---
 CORRELATIONS_FOOT = {
-    tuple(sorted(["Handicap Asiatique -0.5", "Over/Under 2.5"])): 0.25,
-    tuple(sorted(["Handicap Asiatique -0.5", "BTTS"])): 0.10,
-    tuple(sorted(["Over/Under 2.5", "BTTS"])): 0.55,
+    ("football", "BTTS", "Handicap Asiatique -0.5"): 0.10,
+    ("football", "BTTS", "Over/Under 2.5"): 0.55,
+    ("football", "Handicap Asiatique -0.5", "Over/Under 2.5"): 0.25,
 }
 
 # --- Basket ---
 CORRELATIONS_BASKET = {
-    # Money Line et Spread sont très corrélés (même direction)
-    tuple(sorted(["Money Line", "Spread -4.5"])): 0.70,
-    # Money Line et Total Points : faiblement corrélés
-    tuple(sorted(["Money Line", "Total Points"])): 0.05,
-    # Spread et Total Points : faiblement corrélés aussi
-    tuple(sorted(["Spread -4.5", "Total Points"])): 0.15,
+    ("basket", "Money Line", "Spread -4.5"): 0.70,
+    ("basket", "Money Line", "Total Points"): 0.05,
+    ("basket", "Spread -4.5", "Total Points"): 0.15,
 }
 
-# Ancien nom conservé pour compatibilité
-CORRELATIONS_DEFAUT = {**CORRELATIONS_FOOT, **CORRELATIONS_BASKET}
+# --- Tennis ---
+CORRELATIONS_TENNIS = {
+    # Vainqueur et Score 2-0 sont très corrélés
+    ("tennis", "Score Exact Sets", "Vainqueur"): 0.75,
+    # Vainqueur et Over/Under Jeux : faiblement corrélés
+    ("tennis", "Over/Under Jeux", "Vainqueur"): 0.10,
+    # Score 2-0 et Over/Under Jeux : corrélation modérée (2-0 = souvent moins de jeux)
+    ("tennis", "Over/Under Jeux", "Score Exact Sets"): -0.20,
+}
+
+# Fusion de toutes les corrélations par défaut
+CORRELATIONS_DEFAUT = {
+    **CORRELATIONS_FOOT,
+    **CORRELATIONS_BASKET,
+    **CORRELATIONS_TENNIS,
+}
 
 
-def _trouver_correlation(marche_a, marche_b, correlations):
-    cle = tuple(sorted([marche_a, marche_b]))
-    if cle in correlations:
-        return correlations[cle]
-    if cle in CORRELATIONS_DEFAUT:
-        return CORRELATIONS_DEFAUT[cle]
+def _trouver_correlation(sport, marche_a, marche_b, correlations):
+    """
+    Trouve la corrélation entre deux marchés pour un sport donné.
+    Cherche d'abord dans les corrélations apprises (par sport),
+    puis dans les valeurs par défaut.
+    """
+    m1, m2 = sorted([marche_a, marche_b])
+
+    # 1. Corrélations apprises (déjà préfixées par sport)
+    cle_apprise = (sport, m1, m2)
+    if cle_apprise in correlations:
+        return correlations[cle_apprise]
+
+    # 2. Corrélations par défaut
+    if cle_apprise in CORRELATIONS_DEFAUT:
+        return CORRELATIONS_DEFAUT[cle_apprise]
+
+    # 3. Aucune corrélation trouvée
     return 0.0
 
 
@@ -194,18 +217,36 @@ def _trouver_correlation(marche_a, marche_b, correlations):
 def appliquer_copule(data):
     """
     Applique la copule gaussienne sur les probabilités calibrées
-    pour assurer la cohérence inter-marchés (football ET basket).
+    pour assurer la cohérence inter-marchés — par sport.
     """
     marches = data.get("marches", [])
+    match = data.get("match", {})
+    sport = match.get("sport", "football")
+
     if len(marches) < 2:
         return data
 
-    # Apprentissage des corrélations
+    # Apprentissage des corrélations (par sport)
     correlations = apprendre_correlations()
-    data["copula_correlations_apprises"] = len(correlations)
-    data["copula_correlations"] = {
-        f"{k[0]} × {k[1]}": v for k, v in list(correlations.items())[:5]
+    # Filtrer uniquement les corrélations du sport courant
+    correlations_sport = {
+        k: v for k, v in correlations.items()
+        if isinstance(k, tuple) and len(k) >= 1 and k[0] == sport
     }
+
+    data["copula_correlations_apprises"] = len(correlations_sport)
+    data["copula_sport"] = sport
+
+    # Construction du dict d'affichage : on montre les paires utilisées
+    paires_affichees = {}
+    noms = [m.get("nom", "") for m in marches]
+    for i in range(len(noms)):
+        for j in range(i + 1, len(noms)):
+            rho = _trouver_correlation(sport, noms[i], noms[j], correlations_sport)
+            if rho != 0:
+                paires_affichees[f"{noms[i]} × {noms[j]}"] = rho
+
+    data["copula_correlations"] = paires_affichees
 
     # Extraction des probas actuelles
     probas = {}
@@ -223,7 +264,7 @@ def appliquer_copule(data):
         for autre_nom, p_autre in probas.items():
             if autre_nom == nom:
                 continue
-            rho = _trouver_correlation(nom, autre_nom, correlations)
+            rho = _trouver_correlation(sport, nom, autre_nom, correlations_sport)
             if rho == 0:
                 continue
 
