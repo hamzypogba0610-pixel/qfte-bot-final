@@ -64,6 +64,8 @@
         .copula-title { color: #f472b6; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
         .basket-box { background: linear-gradient(135deg, #0a1400, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #a3e635; }
         .basket-title { color: #a3e635; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
+        .tennis-box { background: linear-gradient(135deg, #140a00, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #fb923c; }
+        .tennis-title { color: #fb923c; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
         .signature-box { margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #0a0a0a, #141414); border-radius: 12px; border: 2px solid #2a2a2a; text-align: center; }
         .sig-diamant { border-color: #a78bfa; box-shadow: 0 0 20px rgba(167,139,250,0.3); }
         .sig-or { border-color: #facc15; box-shadow: 0 0 15px rgba(250,204,21,0.25); }
@@ -107,6 +109,8 @@
         <div class="ligne"><span class="label">Rencontre :</span> {{ match.equipe1 }} vs {{ match.equipe2 }}</div>
         {% if match.sport == "basket" %}
         <div class="ligne"><span class="label">Écart attendu :</span> {{ lambda_home }} pts (équipe 1)</div>
+        {% elif match.sport == "tennis" %}
+        <div class="ligne"><span class="label">P(gagne un set) :</span> {{ lambda_home }} (J1) - {{ lambda_away }} (J2)</div>
         {% else %}
         <div class="ligne"><span class="label">Buts attendus (λ) :</span> {{ lambda_home }} - {{ lambda_away }}</div>
         {% endif %}
@@ -119,7 +123,9 @@
         {% if total_buts_comp != "-" %}
         <div class="ligne">
             <span class="label">
-                {% if match.sport == "basket" %}Ligne totale estimée :{% else %}Total de buts (référence) :{% endif %}
+                {% if match.sport == "basket" %}Ligne totale estimée :
+                {% elif match.sport == "tennis" %}Total de jeux estimé :
+                {% else %}Total de buts (référence) :{% endif %}
             </span>
             {{ total_buts_comp }}
         </div>
@@ -152,12 +158,46 @@
     </div>
     {% endif %}
 
+    {% if tennis_config %}
+    <div class="tennis-box">
+        <div class="tennis-title">🎾 Configuration Tennis</div>
+        <div class="ctx-row">
+            <span class="label">Type détecté</span>
+            <span class="ctx-val">{{ tennis_config.type }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Format</span>
+            <span class="ctx-val">Best of {{ tennis_config.best_of }} sets</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Ligne de jeux</span>
+            <span class="ctx-val">{{ tennis_config.ligne_jeux }} jeux</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">σ jeux</span>
+            <span class="ctx-val">{{ tennis_config.sigma_jeux }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">P(gagne un set)</span>
+            <span class="ctx-val">{{ tennis_config.p_set }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Nombre de sets prévus</span>
+            <span class="ctx-val">{{ tennis_config.nb_sets_moyen }}</span>
+        </div>
+    </div>
+    {% endif %}
+
     {% if contexte %}
     <div class="match">
         <h2>🧠 Analyse contextuelle</h2>
 
         {% if contexte.scores and contexte.scores.dom_marques is not none %}
-        <h3>⚽ Moyennes {{ 'de points' if match.sport == 'basket' else 'de buts' }} (scores réels)</h3>
+        <h3>
+            {% if match.sport == 'basket' %}🏀 Moyennes de points (scores réels)
+            {% elif match.sport == 'tennis' %}🎾 Moyennes de jeux (scores réels)
+            {% else %}⚽ Moyennes de buts (scores réels){% endif %}
+        </h3>
         <div class="ctx-row">
             <span class="label">{{ match.equipe1 }} — marque à domicile</span>
             <span class="ctx-val">{{ contexte.scores.dom_marques }}</span>
@@ -188,7 +228,7 @@
 
         {% if contexte.h2h and contexte.h2h.n > 0 %}
         <h3>⚔️ Confrontations directes ({{ contexte.h2h.n }} matchs)</h3>
-        <div class="ctx-row"><span class="label">Moyenne {{ 'points' if match.sport == 'basket' else 'buts' }} H2H</span><span class="ctx-val">{{ contexte.h2h.moy_buts }}</span></div>
+        <div class="ctx-row"><span class="label">Moyenne {{ 'points' if match.sport == 'basket' else ('jeux' if match.sport == 'tennis' else 'buts') }} H2H</span><span class="ctx-val">{{ contexte.h2h.moy_buts }}</span></div>
         <div class="ctx-row"><span class="label">Victoires {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.h2h.v_dom }}</span></div>
         <div class="ctx-row"><span class="label">Nuls</span><span class="ctx-val neutre">{{ contexte.h2h.nuls }}</span></div>
         <div class="ctx-row"><span class="label">Victoires {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.h2h.v_ext }}</span></div>
@@ -218,27 +258,35 @@
     <div class="match">
         {% if match.sport == "basket" %}
         <h2>🎯 Marges et scores projetés</h2>
+        {% elif match.sport == "tennis" %}
+        <h2>🎯 Scores en sets prédits</h2>
         {% else %}
         <h2>🎯 Scores prédits (Dixon-Coles)</h2>
         {% endif %}
 
         <div class="ligne">
             <span class="label">
-                {% if match.sport == "basket" %}Score à la mi-temps projeté :{% else %}Score à la mi-temps le plus probable :{% endif %}
+                {% if match.sport == "basket" %}Score à la mi-temps projeté :
+                {% elif match.sport == "tennis" %}Score après le 1er set :
+                {% else %}Score à la mi-temps le plus probable :{% endif %}
             </span>
         </div>
         <div class="score-box">
             <div class="score-item">
                 <div class="score-val">{{ top_ht_score.score }}</div>
                 <div class="label">
-                    {% if match.sport == "basket" %}Projection{% else %}Proba : {{ (top_ht_score.proba * 100) | round(1) }}%{% endif %}
+                    {% if match.sport == "basket" %}Projection
+                    {% elif match.sport == "tennis" %}Proba : {{ (top_ht_score.proba * 100) | round(1) }}%
+                    {% else %}Proba : {{ (top_ht_score.proba * 100) | round(1) }}%{% endif %}
                 </div>
             </div>
         </div>
 
         <div class="ligne" style="margin-top: 15px;">
             <span class="label">
-                {% if match.sport == "basket" %}2 marges de victoire les plus probables :{% else %}2 scores exacts les plus probables :{% endif %}
+                {% if match.sport == "basket" %}2 marges de victoire les plus probables :
+                {% elif match.sport == "tennis" %}2 scores en sets les plus probables :
+                {% else %}2 scores exacts les plus probables :{% endif %}
             </span>
         </div>
         <div class="score-box">
@@ -271,7 +319,7 @@
 
     {% if copula_correlations %}
     <div class="copula-box">
-        <div class="copula-title">🔗 Corrélations Copula</div>
+        <div class="copula-title">🔗 Corrélations Copula {% if copula_sport %}({{ copula_sport }}){% endif %}</div>
         {% for k, v in copula_correlations.items() %}
         <div class="ctx-row">
             <span class="label">{{ k }}</span>
@@ -435,4 +483,4 @@
     <a href="/" class="back">← Nouvelle analyse</a>
     <a href="/dashboard" class="back back-alt">📊 Dashboard</a>
 </body>
-</html>
+        </html>
