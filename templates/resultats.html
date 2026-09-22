@@ -66,6 +66,8 @@
         .basket-title { color: #a3e635; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
         .tennis-box { background: linear-gradient(135deg, #140a00, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #fb923c; }
         .tennis-title { color: #fb923c; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
+        .elo-box { background: linear-gradient(135deg, #0a0a1a, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #818cf8; }
+        .elo-title { color: #818cf8; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
         .signature-box { margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #0a0a0a, #141414); border-radius: 12px; border: 2px solid #2a2a2a; text-align: center; }
         .sig-diamant { border-color: #a78bfa; box-shadow: 0 0 20px rgba(167,139,250,0.3); }
         .sig-or { border-color: #facc15; box-shadow: 0 0 15px rgba(250,204,21,0.25); }
@@ -106,6 +108,9 @@
         <h2>Match analysé</h2>
         <div class="ligne"><span class="label">Sport :</span> {{ match.sport }}</div>
         <div class="ligne"><span class="label">Compétition :</span> {{ match.competition }}</div>
+        {% if match.sport == "tennis" and match.surface %}
+        <div class="ligne"><span class="label">Surface :</span> {{ match.surface }}</div>
+        {% endif %}
         <div class="ligne"><span class="label">Rencontre :</span> {{ match.equipe1 }} vs {{ match.equipe2 }}</div>
         {% if match.sport == "basket" %}
         <div class="ligne"><span class="label">Écart attendu :</span> {{ lambda_home }} pts (équipe 1)</div>
@@ -170,6 +175,10 @@
             <span class="ctx-val">Best of {{ tennis_config.best_of }} sets</span>
         </div>
         <div class="ctx-row">
+            <span class="label">Surface</span>
+            <span class="ctx-val">{{ tennis_config.surface }}</span>
+        </div>
+        <div class="ctx-row">
             <span class="label">Ligne de jeux</span>
             <span class="ctx-val">{{ tennis_config.ligne_jeux }} jeux</span>
         </div>
@@ -185,6 +194,54 @@
             <span class="label">Nombre de sets prévus</span>
             <span class="ctx-val">{{ tennis_config.nb_sets_moyen }}</span>
         </div>
+    </div>
+    {% endif %}
+
+    {% if elo_info %}
+    <div class="elo-box">
+        <div class="elo-title">🎾 Info Elo</div>
+        <div class="ctx-row">
+            <span class="label">Surface utilisée</span>
+            <span class="ctx-val">{{ elo_info.surface }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Elo surface — {{ match.equipe1 }}</span>
+            <span class="ctx-val">{{ elo_info.elo1_surface }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Elo surface — {{ match.equipe2 }}</span>
+            <span class="ctx-val">{{ elo_info.elo2_surface }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Elo global — {{ match.equipe1 }}</span>
+            <span class="ctx-val">{{ elo_info.elo1_global }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Elo global — {{ match.equipe2 }}</span>
+            <span class="ctx-val">{{ elo_info.elo2_global }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Écart Elo (J2 - J1)</span>
+            <span class="ctx-val {% if elo_info.ecart < 0 %}neg{% endif %}">{{ elo_info.ecart }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Proba Elo pure</span>
+            <span class="ctx-val">{{ elo_info.proba }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Confiance Elo</span>
+            <span class="ctx-val {% if elo_info.confiance_elo < 0.3 %}neutre{% endif %}">{{ elo_info.confiance_elo }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Matchs cumulés (J1 + J2)</span>
+            <span class="ctx-val">{{ elo_info.matchs1 + elo_info.matchs2 }}</span>
+        </div>
+        {% if blend_info %}
+        <div class="ctx-row" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
+            <span class="label">Poids Elo / Cote</span>
+            <span class="ctx-val">{{ blend_info.poids_elo }} / {{ blend_info.poids_cote }}</span>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -483,4 +540,4 @@
     <a href="/" class="back">← Nouvelle analyse</a>
     <a href="/dashboard" class="back back-alt">📊 Dashboard</a>
 </body>
-        </html>
+            </html>
