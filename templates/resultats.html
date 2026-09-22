@@ -171,6 +171,7 @@
     </div>
     {% endif %}
 
+    
     <div class="match">
         <h2>Décision finale</h2>
         <div class="ligne"><strong>{{ decision }}</strong></div>
@@ -260,15 +261,15 @@
     </div>
     {% endfor %}
 
-    {% if signature and signature.seuils_amplifies %}
+    {% if seuils_amplifies %}
     <div class="seuils-box">
         <div class="seuil-item">
             <span class="seuil-label">Seuil EV</span>
-            <span class="seuil-val">{{ (signature.seuils_amplifies.seuil_ev * 100) | round(1) }}%</span>
+            <span class="seuil-val">{{ (seuils_amplifies.seuil_ev * 100) | round(1) }}%</span>
         </div>
         <div class="seuil-item">
             <span class="seuil-label">Seuil Fiabilité</span>
-            <span class="seuil-val">{{ signature.seuils_amplifies.seuil_fiabilite }}</span>
+            <span class="seuil-val">{{ seuils_amplifies.seuil_fiabilite }}</span>
         </div>
     </div>
     {% endif %}
@@ -327,8 +328,7 @@
             <div class="sig-item"><span>Calibration</span><span>{{ signature.signaux.calibration }}</span></div>
             <div class="sig-item"><span>Liquidité</span><span>{{ signature.signaux.liquidite }}</span></div>
             <div class="sig-item"><span>Consensus</span><span>{{ signature.signaux.consensus }}</span></div>
-            <div class="sig-item">
-                            <div class="sig-item"><span>Robustesse</span><span>{{ signature.signaux.robustesse }}</span></div>
+            <div class="sig-item"><span>Robustesse</span><span>{{ signature.signaux.robustesse }}</span></div>
         </div>
 
         <div class="signature-meta">
@@ -347,4 +347,4 @@
     <a href="/" class="back">← Nouvelle analyse</a>
     <a href="/dashboard" class="back back-alt">📊 Dashboard</a>
 </body>
-</html>
+                                                                                                        </html>
