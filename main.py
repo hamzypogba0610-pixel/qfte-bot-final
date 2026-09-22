@@ -44,16 +44,26 @@ async def analyser(
     volume: int = Form(...),
 ):
     match = {
-        "sport": sport, "competition": competition,
-        "equipe1": equipe1, "equipe2": equipe2,
-        "cote_ouverture": cote_ouv_1, "cote_actuelle": cote_ferm_1,
-        "cote_ouv_2": cote_ouv_2, "cote_ferm_2": cote_ferm_2,
-        "cote_ah": cote_ah, "cote_over25": cote_over25,
-        "cote_btts": cote_btts, "volume": volume,
-        "forme_dom_5": forme_dom_5, "scores_dom_5": scores_dom_5,
-        "forme_dom_glob_5": forme_dom_glob_5, "scores_dom_glob_5": scores_dom_glob_5,
-        "forme_ext_5": forme_ext_5, "scores_ext_5": scores_ext_5,
-        "forme_ext_glob_5": forme_ext_glob_5, "scores_ext_glob_5": scores_ext_glob_5,
+        "sport": sport,
+        "competition": competition,
+        "equipe1": equipe1,
+        "equipe2": equipe2,
+        "cote_ouverture": cote_ouv_1,
+        "cote_actuelle": cote_ferm_1,
+        "cote_ouv_2": cote_ouv_2,
+        "cote_ferm_2": cote_ferm_2,
+        "cote_ah": cote_ah,
+        "cote_over25": cote_over25,
+        "cote_btts": cote_btts,
+        "volume": volume,
+        "forme_dom_5": forme_dom_5,
+        "scores_dom_5": scores_dom_5,
+        "forme_dom_glob_5": forme_dom_glob_5,
+        "scores_dom_glob_5": scores_dom_glob_5,
+        "forme_ext_5": forme_ext_5,
+        "scores_ext_5": scores_ext_5,
+        "forme_ext_glob_5": forme_ext_glob_5,
+        "scores_ext_glob_5": scores_ext_glob_5,
         "h2h_5": h2h_5,
     }
 
@@ -78,6 +88,7 @@ async def analyser(
             "contexte": resultat.get("contexte", {}),
             "modele_lambda": resultat.get("modele_lambda", "-"),
             "signature": resultat.get("signature", {}),
+            "seuils_amplifies": resultat.get("seuils_amplifies", {}),
         },
     )
 
@@ -100,8 +111,13 @@ async def dashboard(request: Request):
     roi = calculer_roi()
     historique = charger_historique()
     dernieres = list(reversed(historique[-20:]))
+
     return templates.TemplateResponse(
         request,
         "dashboard.html",
-        {"stats": stats, "roi": roi, "dernieres": dernieres},
-)
+        {
+            "stats": stats,
+            "roi": roi,
+            "dernieres": dernieres,
+        },
+                            )
