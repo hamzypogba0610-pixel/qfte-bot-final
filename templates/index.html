@@ -25,64 +25,64 @@
     <form action="/analyser" method="post">
         <h2>🏟️ Match</h2>
         <label>Sport</label>
-        <select name="sport">
+        <select name="sport" id="select_sport">
             <option value="football">Football</option>
             <option value="basket">Basket</option>
             <option value="tennis">Tennis</option>
         </select>
 
         <label>Compétition</label>
-        <input type="text" name="competition" placeholder="Ex: Ligue 1" required>
+        <input type="text" name="competition" placeholder="Ex: Ligue 1 / NBA / ATP" required>
 
-        <label>Équipe / Joueur 1 (à domicile)</label>
+        <label id="label_equipe1">Équipe 1 (à domicile)</label>
         <input type="text" name="equipe1" required>
 
-        <label>Équipe / Joueur 2 (à l'extérieur)</label>
+        <label id="label_equipe2">Équipe 2 (à l'extérieur)</label>
         <input type="text" name="equipe2" required>
 
         <h2>📊 Cotes 1X2 (les 2 équipes)</h2>
-        <label>Cote Équipe 1 — Ouverture / Fermeture</label>
+        <label id="label_cote_ouv1">Cote Équipe 1 — Ouverture / Fermeture</label>
         <div class="row">
             <div><input type="number" step="0.01" name="cote_ouv_1" placeholder="Ouv." required></div>
             <div><input type="number" step="0.01" name="cote_ferm_1" placeholder="Ferm." required></div>
         </div>
-        <label>Cote Équipe 2 — Ouverture / Fermeture</label>
+        <label id="label_cote_ouv2">Cote Équipe 2 — Ouverture / Fermeture</label>
         <div class="row">
             <div><input type="number" step="0.01" name="cote_ouv_2" placeholder="Ouv." required></div>
             <div><input type="number" step="0.01" name="cote_ferm_2" placeholder="Ferm." required></div>
         </div>
 
-        <h2>📈 Équipe 1 — à domicile</h2>
+        <h2 id="titre_bloc1">📈 Équipe 1 — à domicile</h2>
 
-        <label>5 derniers résultats à domicile (V/N/D)</label>
+        <label id="label_forme_dom">5 derniers résultats à domicile (V/N/D)</label>
         <input type="text" name="forme_dom_5" placeholder="Ex: V V N D V" required>
 
-        <label>5 derniers scores à domicile</label>
+        <label id="label_scores_dom">5 derniers scores à domicile</label>
         <input type="text" name="scores_dom_5" placeholder="Ex: 2-1,1-0,3-2,0-0,1-1" required>
-        <div class="aide">Format : buts_pour-buts_contre, séparés par des virgules</div>
+        <div class="aide" id="aide_scores_dom">Format : buts_pour-buts_contre, séparés par des virgules</div>
 
-        <label>5 derniers résultats globaux (V/N/D)</label>
+        <label id="label_forme_dom_glob">5 derniers résultats globaux (V/N/D)</label>
         <input type="text" name="forme_dom_glob_5" placeholder="Ex: V D V V N" required>
 
-        <label>5 derniers scores globaux</label>
+        <label id="label_scores_dom_glob">5 derniers scores globaux</label>
         <input type="text" name="scores_dom_glob_5" placeholder="Ex: 2-1,1-2,3-0,1-1,0-1" required>
 
-        <h2>📉 Équipe 2 — à l'extérieur</h2>
+        <h2 id="titre_bloc2">📉 Équipe 2 — à l'extérieur</h2>
 
-        <label>5 derniers résultats à l'extérieur (V/N/D)</label>
+        <label id="label_forme_ext">5 derniers résultats à l'extérieur (V/N/D)</label>
         <input type="text" name="forme_ext_5" placeholder="Ex: D V N V D" required>
 
-        <label>5 derniers scores à l'extérieur</label>
+        <label id="label_scores_ext">5 derniers scores à l'extérieur</label>
         <input type="text" name="scores_ext_5" placeholder="Ex: 1-2,0-1,2-3,1-1,0-0" required>
 
-        <label>5 derniers résultats globaux (V/N/D)</label>
+        <label id="label_forme_ext_glob">5 derniers résultats globaux (V/N/D)</label>
         <input type="text" name="forme_ext_glob_5" placeholder="Ex: N D V D N" required>
 
-        <label>5 derniers scores globaux</label>
+        <label id="label_scores_ext_glob">5 derniers scores globaux</label>
         <input type="text" name="scores_ext_glob_5" placeholder="Ex: 1-2,0-1,2-1,1-3,1-1" required>
 
         <h2>⚔️ Confrontations directes (H2H)</h2>
-        <label>5 derniers scores H2H (Équipe1-Équipe2)</label>
+        <label id="label_h2h">5 derniers scores H2H (Équipe1-Équipe2)</label>
         <input type="text" name="h2h_5" placeholder="Ex: 2-1,1-1,0-2,3-0,1-0" required>
 
         <h2>🎯 Cotes des 3 marchés analysés</h2>
@@ -103,28 +103,95 @@
     </form>
 
     <script>
-        const selectSport = document.querySelector('select[name="sport"]');
+        const selectSport = document.getElementById("select_sport");
+
         function majLabels() {
             const sport = selectSport.value;
-            const lAh = document.getElementById("label_ah");
-            const lOv = document.getElementById("label_over25");
-            const lBt = document.getElementById("label_btts");
-            if (sport === "basket") {
-                lAh.textContent = "Cote Spread -4.5 (Domicile)";
-                lOv.textContent = "Cote Total Points Over 180.5";
-                lBt.textContent = "Cote Money Line Domicile";
-            } else if (sport === "tennis") {
-                lAh.textContent = "Cote Vainqueur Joueur 1";
-                lOv.textContent = "Cote Over 22.5 jeux";
-                lBt.textContent = "Cote Joueur 1 gagne 2-0";
+            const eq1 = document.getElementById("label_equipe1");
+            const eq2 = document.getElementById("label_equipe2");
+            const c1 = document.getElementById("label_cote_ouv1");
+            const c2 = document.getElementById("label_cote_ouv2");
+            const t1 = document.getElementById("titre_bloc1");
+            const t2 = document.getElementById("titre_bloc2");
+            const fd = document.getElementById("label_forme_dom");
+            const sd = document.getElementById("label_scores_dom");
+            const fdg = document.getElementById("label_forme_dom_glob");
+            const sdg = document.getElementById("label_scores_dom_glob");
+            const fe = document.getElementById("label_forme_ext");
+            const se = document.getElementById("label_scores_ext");
+            const feg = document.getElementById("label_forme_ext_glob");
+            const seg = document.getElementById("label_scores_ext_glob");
+            const h2h = document.getElementById("label_h2h");
+            const ah = document.getElementById("label_ah");
+            const ov = document.getElementById("label_over25");
+            const bt = document.getElementById("label_btts");
+            const aideSd = document.getElementById("aide_scores_dom");
+
+            if (sport === "tennis") {
+                eq1.textContent = "Joueur 1";
+                eq2.textContent = "Joueur 2";
+                c1.textContent = "Cote Joueur 1 — Ouverture / Fermeture";
+                c2.textContent = "Cote Joueur 2 — Ouverture / Fermeture";
+                t1.textContent = "📈 Joueur 1 — forme récente";
+                t2.textContent = "📉 Joueur 2 — forme récente";
+                fd.textContent = "5 derniers résultats (V/N/D)";
+                sd.textContent = "5 derniers scores (en sets)";
+                fdg.textContent = "5 derniers résultats globaux (V/N/D)";
+                sdg.textContent = "5 derniers scores globaux (en sets)";
+                fe.textContent = "5 derniers résultats (V/N/D)";
+                se.textContent = "5 derniers scores (en sets)";
+                feg.textContent = "5 derniers résultats globaux (V/N/D)";
+                seg.textContent = "5 derniers scores globaux (en sets)";
+                h2h.textContent = "5 derniers H2H (Joueur1-Joueur2, en sets)";
+                ah.textContent = "Cote Vainqueur Joueur 1";
+                ov.textContent = "Cote Over/Under Jeux (ex: 22.5)";
+                bt.textContent = "Cote Score Exact Sets (ex: 2-0)";
+                aideSd.textContent = "Format : sets_pour-sets_contre (ex: 2-0, 2-1, 0-2)";
+            } else if (sport === "basket") {
+                eq1.textContent = "Équipe 1 (à domicile)";
+                eq2.textContent = "Équipe 2 (à l'extérieur)";
+                c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
+                c2.textContent = "Cote Équipe 2 — Ouverture / Fermeture";
+                t1.textContent = "📈 Équipe 1 — à domicile";
+                t2.textContent = "📉 Équipe 2 — à l'extérieur";
+                fd.textContent = "5 derniers résultats à domicile (V/N/D)";
+                sd.textContent = "5 derniers scores à domicile";
+                fdg.textContent = "5 derniers résultats globaux (V/N/D)";
+                sdg.textContent = "5 derniers scores globaux";
+                fe.textContent = "5 derniers résultats à l'extérieur (V/N/D)";
+                se.textContent = "5 derniers scores à l'extérieur";
+                feg.textContent = "5 derniers résultats globaux (V/N/D)";
+                seg.textContent = "5 derniers scores globaux";
+                h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
+                ah.textContent = "Cote Spread -4.5 (Domicile)";
+                ov.textContent = "Cote Total Points Over/Under";
+                bt.textContent = "Cote Money Line Domicile";
+                aideSd.textContent = "Format : points_pour-points_contre (ex: 108-102)";
             } else {
-                lAh.textContent = "Cote Handicap Asiatique -0.5";
-                lOv.textContent = "Cote Over 2.5";
-                lBt.textContent = "Cote BTTS Oui";
+                eq1.textContent = "Équipe 1 (à domicile)";
+                eq2.textContent = "Équipe 2 (à l'extérieur)";
+                c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
+                c2.textContent = "Cote Équipe 2 — Ouverture / Fermeture";
+                t1.textContent = "📈 Équipe 1 — à domicile";
+                t2.textContent = "📉 Équipe 2 — à l'extérieur";
+                fd.textContent = "5 derniers résultats à domicile (V/N/D)";
+                sd.textContent = "5 derniers scores à domicile";
+                fdg.textContent = "5 derniers résultats globaux (V/N/D)";
+                sdg.textContent = "5 derniers scores globaux";
+                fe.textContent = "5 derniers résultats à l'extérieur (V/N/D)";
+                se.textContent = "5 derniers scores à l'extérieur";
+                feg.textContent = "5 derniers résultats globaux (V/N/D)";
+                seg.textContent = "5 derniers scores globaux";
+                h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
+                ah.textContent = "Cote Handicap Asiatique -0.5";
+                ov.textContent = "Cote Over 2.5";
+                bt.textContent = "Cote BTTS Oui";
+                aideSd.textContent = "Format : buts_pour-buts_contre, séparés par des virgules";
             }
         }
+
         selectSport.addEventListener("change", majLabels);
         majLabels();
     </script>
 </body>
-            </html>
+    </html>
