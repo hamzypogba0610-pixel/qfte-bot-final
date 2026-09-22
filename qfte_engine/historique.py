@@ -5,7 +5,7 @@ from datetime import datetime
 
 FICHIER_HISTORIQUE = "historique.json"
 BANKROLL_DEPART = 1000.0
-DEMI_VIE_JOURS = 30.0  # Time-decay : match d'il y a 30j = poids 0.5
+DEMI_VIE_JOURS = 30.0
 
 
 def charger_historique():
@@ -27,13 +27,6 @@ def _ecrire_historique(historique):
 
 
 def _poids_temporel(date_str):
-    """
-    Time-decay : retourne un poids entre 0 et 1 selon la récence.
-    poids = exp(-âge_jours / demi_vie)
-      - Match du jour     → 1.00
-      - Match il y a 30j  → 0.37
-      - Match il y a 90j  → 0.05
-    """
     if not date_str:
         return 0.5
     try:
@@ -86,29 +79,46 @@ def sauvegarder_analyse(match, resultat):
 def _pari_gagne(marche, selection, score_home, score_away):
     total = score_home + score_away
     selection = (selection or "").lower()
+    marche_lower = (marche or "").lower()
 
-    if "Handicap" in marche:
+    # Football
+    if "handicap" in marche_lower:
         return score_home > score_away
 
-    if "Over/Under 2.5" in marche or ("2.5" in marche and "Total" not in marche):
+    if "over/under 2.5" in marche_lower or ("2.5" in marche_lower and "total" not in marche_lower and "jeux" not in marche_lower):
         if "under" in selection:
             return total < 2.5
         else:
             return total > 2.5
 
-    if "BTTS" in marche:
+    if "btts" in marche_lower:
         return score_home >= 1 and score_away >= 1
 
-    if "Money Line" in marche:
+    # Basket
+    if "money line" in marche_lower:
         return score_home > score_away
 
-    if "Spread" in marche:
+    if "spread" in marche_lower:
         return (score_home - score_away) > 4.5
 
-    if "Total Points" in marche:
+    if "total points" in marche_lower:
         if "under" in selection:
             return total < 180.5
         return total > 180.5
+
+    # Tennis
+    if "vainqueur" in marche_lower:
+        return score_home > score_away
+
+    if "over/under jeux" in marche_lower:
+        # En tennis, score_home / score_away = nombre de jeux
+        if "under" in selection:
+            return total < 22.5
+        return total > 22.5
+
+    if "score exact" in marche_lower or "score 2-0" in marche_lower:
+        # Score exact en sets : on suppose score_home > score_away pour 2-0
+        return score_home > score_away and score_away == 0
 
     return False
 
@@ -151,7 +161,6 @@ def enregistrer_resultat(id_unique, score_home, score_away, marches_joues):
 
 
 def calculer_roi():
-    """ROI calculé à parts égales (pas de time-decay) — mesure la réalité."""
     historique = charger_historique()
     total_paris = 0
     paris_gagnes = 0
@@ -191,7 +200,8 @@ def calculer_roi():
         "paris_gagnes": paris_gagnes,
         "paris_perdus": paris_perdus,
         "total_mise": round(total_mise, 2),
-    }
+                  }
+
 
 
 def calculer_statistiques():
@@ -239,11 +249,23 @@ def calculer_statistiques():
     return stats
 
 
+def _cle_apprentissage(sport, marche):
+    """
+    ✨ PRÉFIXAGE PAR SPORT — anti-contamination.
+    Les calibrateurs, BMA et Copula apprennent sur ces clés,
+    donc chaque sport a son propre apprentissage, isolé.
+    """
+    return "{}\u0001{}".format(sport or "inconnu", marche or "")
+
+
 def recuperer_donnees_apprentissage():
     """
-    Extrait les paires (proba_prédite, résultat) + un POIDS TEMPOREL
-    pour chaque marché à partir des analyses passées ayant un résultat.
-    Utilisé pour entraîner les calibrateurs avec time-decay.
+    Extrait les paires (proba_prédite, résultat) + poids temporel,
+    AVEC PRÉFIXAGE PAR SPORT dans les clés.
+
+    Clé retournée : "football|Handicap Asiatique -0.5",
+                    "basket|Money Line",
+                    "tennis|Vainqueur", etc.
     """
     historique = charger_historique()
     data = {}
@@ -256,6 +278,7 @@ def recuperer_donnees_apprentissage():
         score_h = res.get("score_home", 0)
         score_a = res.get("score_away", 0)
         poids = _poids_temporel(h.get("date", ""))
+        sport = h.get("sport", "inconnu")
 
         for reco in h.get("recommandations", []):
             marche = reco.get("marche", "")
@@ -271,23 +294,20 @@ def recuperer_donnees_apprentissage():
                 marche, reco.get("selection", ""), score_h, score_a
             ) else 0
 
-            if marche not in data:
-                data[marche] = {"xs": [], "ys": [], "ws": []}
-            data[marche]["xs"].append(proba)
-            data[marche]["ys"].append(outcome)
-            data[marche]["ws"].append(poids)
+            cle = _cle_apprentissage(sport, marche)
+            if cle not in data:
+                data[cle] = {"xs": [], "ys": [], "ws": []}
+            data[cle]["xs"].append(proba)
+            data[cle]["ys"].append(outcome)
+            data[cle]["ws"].append(poids)
 
     return data
 
 
 def recuperer_donnees_bma():
     """
-    Extrait les données pour l'entraînement BMA.
-    Pour chaque marché, retourne les triplets (proba_marche, proba_poisson,
-    proba_sharp, outcome, poids_temporel).
-
-    Utilisé par calculer_poids_bma() pour apprendre les poids optimaux
-    de chaque source (Marché / Poisson / Sharp).
+    Extrait les triplets (proba_marche, proba_poisson, proba_sharp,
+    outcome, poids_temporel) pour chaque marché, AVEC PRÉFIXAGE PAR SPORT.
     """
     historique = charger_historique()
     data = {}
@@ -300,6 +320,7 @@ def recuperer_donnees_bma():
         score_h = res.get("score_home", 0)
         score_a = res.get("score_away", 0)
         poids = _poids_temporel(h.get("date", ""))
+        sport = h.get("sport", "inconnu")
 
         for reco in h.get("recommandations", []):
             marche = reco.get("marche", "")
@@ -307,7 +328,6 @@ def recuperer_donnees_bma():
                 marche, reco.get("selection", ""), score_h, score_a
             ) else 0
 
-            # Les 3 sources principales — présentes après la calibration
             pm = reco.get("proba_marche")
             pp = reco.get("proba_poisson")
             ps = reco.get("proba_sharp")
@@ -322,13 +342,14 @@ def recuperer_donnees_bma():
             except (ValueError, TypeError):
                 continue
 
-            if marche not in data:
-                data[marche] = {"marche": [], "poisson": [], "sharp": [], "y": [], "w": []}
+            cle = _cle_apprentissage(sport, marche)
+            if cle not in data:
+                data[cle] = {"marche": [], "poisson": [], "sharp": [], "y": [], "w": []}
 
-            data[marche]["marche"].append(pm)
-            data[marche]["poisson"].append(pp)
-            data[marche]["sharp"].append(ps)
-            data[marche]["y"].append(outcome)
-            data[marche]["w"].append(poids)
+            data[cle]["marche"].append(pm)
+            data[cle]["poisson"].append(pp)
+            data[cle]["sharp"].append(ps)
+            data[cle]["y"].append(outcome)
+            data[cle]["w"].append(poids)
 
     return data
