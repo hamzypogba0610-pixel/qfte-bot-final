@@ -90,6 +90,10 @@ async def analyser(
             "signature": resultat.get("signature", {}),
             "seuils_amplifies": resultat.get("seuils_amplifies", {}),
             "auto_ou": resultat.get("auto_ou", {}),
+            "copula_correlations": resultat.get("copula_correlations", {}),
+            "copula_correlations_apprises": resultat.get("copula_correlations_apprises", 0),
+            "attention": resultat.get("attention", {}),
+            "bma_actif": resultat.get("bma_actif", False),
         },
     )
 
@@ -121,4 +125,4 @@ async def dashboard(request: Request):
             "roi": roi,
             "dernieres": dernieres,
         },
-                       )
+    )
