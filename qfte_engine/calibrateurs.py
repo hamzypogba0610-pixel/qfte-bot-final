@@ -1,6 +1,8 @@
 """
 Module de calibration avancée QFTE V23.0.
 Contient 4 calibrateurs + la formule signature QFTE Fusion.
+Version AVEC time-decay weighting.
+
 Pur Python — aucune dépendance externe.
 """
 import math
@@ -18,39 +20,57 @@ def logit(p):
     return math.log(p / (1 - p))
 
 
-def log_loss(ys, ps):
+# ============================================================
+# LOG-LOSS PONDÉRÉ (WEIGHTED) — Time-decay
+# ============================================================
+def log_loss(ys, ps, ws=None):
+    """
+    Log-loss pondéré par les poids temporels.
+    Si ws est None → poids uniformes (comportement classique).
+    """
     eps = 1e-9
     n = len(ys)
     if n == 0: return 1.0
+    if ws is None:
+        ws = [1.0] * n
+    total_w = sum(ws)
+    if total_w <= 0: return 1.0
     s = 0.0
-    for y, p in zip(ys, ps):
+    for y, p, w in zip(ys, ps, ws):
         p = max(eps, min(1 - eps, p))
-        s -= y * math.log(p) + (1 - y) * math.log(1 - p)
-    return s / n
+        s -= w * (y * math.log(p) + (1 - y) * math.log(1 - p))
+    return s / total_w
 
 
-def brier_score(ys, ps):
+def brier_score(ys, ps, ws=None):
     n = len(ys)
     if n == 0: return 1.0
-    return sum((p - y) ** 2 for y, p in zip(ys, ps)) / n
+    if ws is None:
+        ws = [1.0] * n
+    total_w = sum(ws)
+    if total_w <= 0: return 1.0
+    return sum(w * (p - y) ** 2 for y, p, w in zip(ys, ps, ws)) / total_w
 
 
 # ============================================================
-# 1. PLATT SCALING
+# 1. PLATT SCALING (pondéré)
 # ============================================================
-def platt_fit(xs, ys, lr=0.05, epochs=800):
+def platt_fit(xs, ys, ws=None, lr=0.05, epochs=800):
     A, B = -1.0, 0.0
     n = len(xs)
     if n < 5: return A, B
+    if ws is None: ws = [1.0] * n
+    total_w = sum(ws) or 1.0
+
     for _ in range(epochs):
         gA, gB = 0.0, 0.0
-        for x, y in zip(xs, ys):
+        for x, y, w in zip(xs, ys, ws):
             p = sigmoid(A * x + B)
-            err = p - y
+            err = (p - y) * w
             gA += err * x
             gB += err
-        A -= lr * gA / n
-        B -= lr * gB / n
+        A -= lr * gA / total_w
+        B -= lr * gB / total_w
     return A, B
 
 
@@ -59,27 +79,30 @@ def platt_predict(x, A, B):
 
 
 # ============================================================
-# 2. BETA CALIBRATION (Kull et al. 2017)
+# 2. BETA CALIBRATION (pondéré)
 # ============================================================
-def beta_fit(xs, ys, lr=0.03, epochs=800):
+def beta_fit(xs, ys, ws=None, lr=0.03, epochs=800):
     a, b, c = 1.0, 1.0, 0.0
     n = len(xs)
     if n < 5: return a, b, c
+    if ws is None: ws = [1.0] * n
+    total_w = sum(ws) or 1.0
     eps = 1e-9
+
     for _ in range(epochs):
         ga, gb, gc = 0.0, 0.0, 0.0
-        for x, y in zip(xs, ys):
+        for x, y, w in zip(xs, ys, ws):
             x = max(eps, min(1 - eps, x))
             lx, l1x = math.log(x), math.log(1 - x)
             z = a * lx + b * l1x + c
             p = sigmoid(z)
-            err = p - y
+            err = (p - y) * w
             ga += err * lx
             gb += err * l1x
             gc += err
-        a -= lr * ga / n
-        b -= lr * gb / n
-        c -= lr * gc / n
+        a -= lr * ga / total_w
+        b -= lr * gb / total_w
+        c -= lr * gc / total_w
     return a, b, c
 
 
@@ -90,24 +113,36 @@ def beta_predict(x, a, b, c):
 
 
 # ============================================================
-# 3. ISOTONIC REGRESSION (PAV)
+# 3. ISOTONIC REGRESSION (pondérée, PAV)
 # ============================================================
-def isotonic_fit(xs, ys):
+def isotonic_fit(xs, ys, ws=None):
     if len(xs) < 5:
         return [(0.0, 0.0), (1.0, 1.0)]
-    pairs = sorted(zip(xs, ys))
-    blocks = []
-    for x, y in pairs:
-        blocks.append([x, y, 1])
+    if ws is None:
+        ws = [1.0] * len(xs)
+
+    # Tri + PAV pondéré
+    pairs = sorted(zip(xs, ys, ws), key=lambda t: t[0])
+    blocks = []  # [sum_x_w, sum_y_w, sum_w]
+    for x, y, w in pairs:
+        blocks.append([x * w, y * w, w])
         while len(blocks) >= 2:
             b1, b2 = blocks[-2], blocks[-1]
-            if b1[1]/b1[2] > b2[1]/b2[2]:
-                merged = [b1[0]+b2[0], b1[1]+b2[1], b1[2]+b2[2]]
+            m1 = b1[1] / b1[2] if b1[2] > 0 else 0
+            m2 = b2[1] / b2[2] if b2[2] > 0 else 0
+            if m1 > m2:
+                merged = [b1[0] + b2[0], b1[1] + b2[1], b1[2] + b2[2]]
                 blocks.pop(); blocks.pop()
                 blocks.append(merged)
             else:
                 break
-    result = [(b[0]/b[2], b[1]/b[2]) for b in blocks]
+
+    result = []
+    for b in blocks:
+        if b[2] > 0:
+            x_mid = b[0] / b[2]
+            y_val = b[1] / b[2]
+            result.append((x_mid, y_val))
     if not result:
         return [(0.0, 0.0), (1.0, 1.0)]
     if result[0][0] > 0.0:
@@ -132,108 +167,67 @@ def isotonic_predict(x, breaks):
 # ============================================================
 # 4. ✨ QFTE FUSION CALIBRATION — FORMULE SIGNATURE ✨
 # ============================================================
-"""
-Combinaison de 5 techniques de pointe :
-  • Temperature Scaling adaptatif (Guo et al. 2017)
-  • Correction sinusoïdale (signature QFTE)
-  • Focal weighting (Lin et al. 2017)
-  • Dirichlet smoothing (Kull et al. 2019)
-  • Bayesian Model Averaging
-
-p_final = σ( logit(p) / T_adaptive + α·sin(2π·p) + β·focal + γ·sharp )
-"""
-
-
 def temperature_adaptatif(p, force_signal, marge_marche):
-    """
-    Température qui s'adapte au contexte :
-    - Plus on est incertain → T augmente (adoucit la proba)
-    - Plus le signal est fort → T diminue (renforce la proba)
-    """
-    incertitude = 1 - abs(p - 0.5) * 2          # 0 = sûr, 1 = incertain
+    incertitude = 1 - abs(p - 0.5) * 2
     T = 0.85 + incertitude * 0.55
     T -= force_signal * 0.35
-    T += marge_marche * 2.0                      # marge élevée → + de prudence
+    T += marge_marche * 2.0
     return max(0.50, min(1.60, T))
 
 
 def correction_sinusoidale(p, amplitude=0.04):
-    """
-    ✨ Signature QFTE ✨
-    Capture les non-linéarités invisibles autour de 0.5.
-    Inspirée des séries de Fourier utilisées en traitement du signal.
-    """
     return amplitude * math.sin(2 * math.pi * p)
 
 
 def focal_weight(p):
-    """
-    Focal weighting (Lin et al. 2017) appliqué à la calibration.
-    Les cas "difficiles" (proches de 0.5) reçoivent plus d'attention.
-    """
     return (abs(p - 0.5) * 2) ** 0.5
 
 
 def dirichlet_smoothing(p, force=25):
-    """
-    Lissage Dirichlet — évite les extrêmes tout en préservant l'information.
-    """
     a = p * force + 1
     b = (1 - p) * force + 1
     return a / (a + b)
 
 
 def qfte_fusion_calibration(p, force_signal=0.5, marge_marche=0.05, sharp_signal=0.0):
-    """
-    ✨ FORMULE MAGIQUE QFTE ✨
-    Calibration finale combinant 5 techniques de pointe.
-    """
     if p <= 0.001 or p >= 0.999:
         return p
-
-    # 1. Logit de base
     z = logit(p)
-
-    # 2. Temperature scaling adaptatif
     T = temperature_adaptatif(p, force_signal, marge_marche)
     z_t = z / T
-
-    # 3. Correction sinusoïdale signature
     corr_sin = correction_sinusoidale(p, amplitude=0.04)
-
-    # 4. Focal weighting
     focal = focal_weight(p)
     z_focal = z_t + (focal - 0.5) * 0.05
-
-    # 5. Signal sharp (mouvement de cote)
     z_sharp = z_focal + sharp_signal * 0.15
-
-    # 6. Sigmoid
     p_new = sigmoid(z_sharp)
-
-    # 7. Dirichlet smoothing final
     p_final = dirichlet_smoothing(p_new, force=25)
-
-    # Bornes
     return max(0.02, min(0.98, p_final))
 
 
 # ============================================================
-# 5. ENTRAÎNEMENT ENSEMBLE (Platt + Beta + Isotonic)
+# 5. ENTRAÎNEMENT ENSEMBLE (avec time-decay)
 # ============================================================
-def entrainer_ensemble(xs, ys):
+def entrainer_ensemble(xs, ys, ws=None):
+    """
+    Entraîne les 3 calibrateurs avec pondération temporelle.
+    Les poids de l'ensemble sont calculés via log-loss pondéré.
+    """
     if len(xs) < 20:
         return None
+    if ws is None:
+        ws = [1.0] * len(xs)
 
-    A, B = platt_fit(xs, ys)
-    a, b, c = beta_fit(xs, ys)
-    breaks = isotonic_fit(xs, ys)
+    A, B = platt_fit(xs, ys, ws)
+    a, b, c = beta_fit(xs, ys, ws)
+    breaks = isotonic_fit(xs, ys, ws)
 
     ps_p = [platt_predict(x, A, B) for x in xs]
     ps_b = [beta_predict(x, a, b, c) for x in xs]
     ps_i = [isotonic_predict(x, breaks) for x in xs]
 
-    ll_p, ll_b, ll_i = log_loss(ys, ps_p), log_loss(ys, ps_b), log_loss(ys, ps_i)
+    ll_p = log_loss(ys, ps_p, ws)
+    ll_b = log_loss(ys, ps_b, ws)
+    ll_i = log_loss(ys, ps_i, ws)
 
     eps = 1e-6
     ip, ib, ii = 1/(ll_p+eps), 1/(ll_b+eps), 1/(ll_i+eps)
@@ -244,6 +238,7 @@ def entrainer_ensemble(xs, ys):
         "beta": {"a": a, "b": b, "c": c, "log_loss": ll_b, "poids": ib / t},
         "isotonic": {"breaks": breaks, "log_loss": ll_i, "poids": ii / t},
         "n_echantillons": len(xs),
+        "poids_total": round(sum(ws), 2),
     }
 
 
