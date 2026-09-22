@@ -1,9 +1,9 @@
 """
 Module Copula Calibration — QFTE V23.0.
 
-Modélise les dépendances entre marchés (HA, O/U, BTTS) via une copule
-gaussienne. Apprend les corrélations depuis l'historique et ajuste les
-probabilités marginales en conséquence.
+Modélise les dépendances entre marchés (football et basket) via une
+copule gaussienne. Apprend les corrélations depuis l'historique et
+ajuste les probabilités marginales en conséquence.
 
 Pur Python — aucune dépendance externe.
 """
@@ -64,9 +64,6 @@ def copule_gaussienne_bivariee(p1, p2, rho):
     """
     Retourne P(Y1=1, Y2=1) pour deux variables binaires de marges p1, p2
     et de corrélation ρ via la copule gaussienne.
-
-    Formule : P = Φ₂(Φ⁻¹(p1), Φ⁻¹(p2); ρ)
-    Approx : Φ₂(a, b; ρ) ≈ Φ(a) · Φ((b - ρ·a) / √(1 - ρ²)) pour ρ modéré
     """
     if p1 <= 0 or p1 >= 1 or p2 <= 0 or p2 >= 1:
         return p1 * p2
@@ -74,8 +71,6 @@ def copule_gaussienne_bivariee(p1, p2, rho):
     z1 = norm_ppf(p1)
     z2 = norm_ppf(p2)
 
-    # Approximation Drezner-Wesolowsky (précision ~1e-6 pour ρ modéré)
-    # P = Φ(a)·Φ(b) + ρ·φ(a)·φ(b)·(1 + ρ²/6 + ...)
     phi_a = math.exp(-z1**2/2) / math.sqrt(2*math.pi)
     phi_b = math.exp(-z2**2/2) / math.sqrt(2*math.pi)
 
@@ -84,27 +79,16 @@ def copule_gaussienne_bivariee(p1, p2, rho):
 
 
 def ajuster_marginale(p_cible, p_partenaire, rho, force=0.30):
-    """
-    Ajuste p_cible en fonction de p_partenaire et de leur corrélation.
-    Logique : si les 2 variables sont corrélées, elles doivent être cohérentes.
-
-    force = 0.30 → ajustement modéré
-    force = 0.50 → ajustement fort
-    """
+    """Ajuste p_cible en fonction de p_partenaire et de leur corrélation."""
     if rho == 0 or p_cible <= 0 or p_cible >= 1:
         return p_cible
 
-    # Écart entre la proba actuelle et ce que la corrélation implique
-    # Si ρ > 0, les deux devraient être du même côté de 0.5
     ecart_signe = (p_cible - 0.5) * (p_partenaire - 0.5)
     if ecart_signe >= 0:
-        # Déjà cohérents → très léger renforcement
         facteur = force * 0.15
     else:
-        # Incohérents → tirage vers l'autre
         facteur = force * 0.50
 
-    # Ajustement
     delta = rho * facteur * (p_partenaire - 0.5) * 2
     p_new = p_cible + delta
     return max(0.02, min(0.98, p_new))
@@ -114,7 +98,6 @@ def ajuster_marginale(p_cible, p_partenaire, rho, force=0.30):
 # APPRENTISSAGE DES CORRÉLATIONS
 # ============================================================
 def _correlation_empirique(xs, ys):
-    """Corrélation de Pearson entre deux listes."""
     n = len(xs)
     if n < 5:
         return 0.0
@@ -130,14 +113,10 @@ def _correlation_empirique(xs, ys):
 
 
 def apprendre_correlations():
-    """
-    Apprend les corrélations empiriques entre marchés depuis l'historique.
-    Retourne un dict {(marche1, marche2): rho}.
-    """
+    """Apprend les corrélations empiriques depuis l'historique."""
     from qfte_engine.historique import charger_historique, _pari_gagne
 
     historique = charger_historique()
-    # Structure : { marche: [(outcome, weight), ...] }
     par_date = {}
 
     for h in historique:
@@ -155,7 +134,6 @@ def apprendre_correlations():
             outcome = 1 if _pari_gagne(marche, sel, score_h, score_a) else 0
             par_date[date][marche] = outcome
 
-    # Regroupe par paires
     paires = {}
     for date, marches in par_date.items():
         noms = list(marches.keys())
@@ -168,7 +146,6 @@ def apprendre_correlations():
                 paires[cle][0].append(marches[m1])
                 paires[cle][1].append(marches[m2])
 
-    # Calcule les corrélations
     correlations = {}
     for cle, (xs, ys) in paires.items():
         if len(xs) >= 10:
@@ -178,12 +155,28 @@ def apprendre_correlations():
     return correlations
 
 
-# Corrélations par défaut (si historique insuffisant)
-CORRELATIONS_DEFAUT = {
+# ============================================================
+# CORRÉLATIONS PAR DÉFAUT
+# ============================================================
+# --- Football ---
+CORRELATIONS_FOOT = {
     tuple(sorted(["Handicap Asiatique -0.5", "Over/Under 2.5"])): 0.25,
     tuple(sorted(["Handicap Asiatique -0.5", "BTTS"])): 0.10,
     tuple(sorted(["Over/Under 2.5", "BTTS"])): 0.55,
 }
+
+# --- Basket ---
+CORRELATIONS_BASKET = {
+    # Money Line et Spread sont très corrélés (même direction)
+    tuple(sorted(["Money Line", "Spread -4.5"])): 0.70,
+    # Money Line et Total Points : faiblement corrélés
+    tuple(sorted(["Money Line", "Total Points"])): 0.05,
+    # Spread et Total Points : faiblement corrélés aussi
+    tuple(sorted(["Spread -4.5", "Total Points"])): 0.15,
+}
+
+# Ancien nom conservé pour compatibilité
+CORRELATIONS_DEFAUT = {**CORRELATIONS_FOOT, **CORRELATIONS_BASKET}
 
 
 def _trouver_correlation(marche_a, marche_b, correlations):
@@ -201,7 +194,7 @@ def _trouver_correlation(marche_a, marche_b, correlations):
 def appliquer_copule(data):
     """
     Applique la copule gaussienne sur les probabilités calibrées
-    pour assurer la cohérence inter-marchés.
+    pour assurer la cohérence inter-marchés (football ET basket).
     """
     marches = data.get("marches", [])
     if len(marches) < 2:
@@ -235,12 +228,10 @@ def appliquer_copule(data):
                 continue
 
             p_temp = ajuster_marginale(p_ajustee, p_autre, rho, force=0.30)
-            # Pondération : plus |ρ| est grand, plus l'ajustement compte
             poids = abs(rho)
             p_ajustee = p_ajustee * (1 - poids) + p_temp * poids
             poids_total += poids
 
-        # Si aucun partenaire → inchangé
         if poids_total == 0:
             p_ajustee = p_orig
 
