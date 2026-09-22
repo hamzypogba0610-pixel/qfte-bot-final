@@ -60,6 +60,8 @@
         .seuils-box .seuil-val { color: #4ade80; font-weight: bold; font-family: monospace; }
         .auto-ou-box { background: linear-gradient(135deg, #0a0a14, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #22d3ee; }
         .auto-ou-title { color: #22d3ee; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
+        .copula-box { background: linear-gradient(135deg, #14000a, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f472b6; }
+        .copula-title { color: #f472b6; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
         .signature-box { margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #0a0a0a, #141414); border-radius: 12px; border: 2px solid #2a2a2a; text-align: center; }
         .sig-diamant { border-color: #a78bfa; box-shadow: 0 0 20px rgba(167,139,250,0.3); }
         .sig-or { border-color: #facc15; box-shadow: 0 0 15px rgba(250,204,21,0.25); }
@@ -234,6 +236,26 @@
     </div>
     {% endif %}
 
+    {% if copula_correlations %}
+    <div class="copula-box">
+        <div class="copula-title">🔗 Corrélations Copula</div>
+        {% for k, v in copula_correlations.items() %}
+        <div class="ctx-row">
+            <span class="label">{{ k }}</span>
+            <span class="ctx-val {% if v < 0 %}neg{% elif v > 0.4 %}neutre{% endif %}">ρ = {{ v }}</span>
+        </div>
+        {% endfor %}
+        <div class="ligne" style="margin-top:8px; font-size:11px;">
+            <span class="label">Mode :</span>
+            {% if copula_correlations_apprises >= 3 %}
+            <span style="color:#4ade80;">Apprises ({{ copula_correlations_apprises }})</span>
+            {% else %}
+            <span style="color:#facc15;">Par défaut (historique insuffisant)</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <h2>Recommandations</h2>
     {% for r in recommandations %}
     <div class="reco {{ r.niveau|lower }}">
@@ -243,6 +265,9 @@
         <div class="ligne"><span class="label">Proba calibrée :</span> {{ r.proba }}</div>
         {% if r.intervalle_confiance %}
         <div class="ligne ic">Intervalle 95% : [{{ r.intervalle_confiance.bas }} — {{ r.intervalle_confiance.haut }}]</div>
+        {% endif %}
+        {% if r.proba_avant_copule %}
+        <div class="ligne ic">🔗 Ajusté par Copula : {{ r.proba_avant_copule }} → {{ r.proba }}</div>
         {% endif %}
         <div class="ligne"><span class="label">Cote :</span> {{ r.cote }}</div>
         <div class="ligne"><span class="label">EV net :</span> {{ r.ev }}</div>
@@ -259,6 +284,12 @@
             <div class="calib-src"><span class="label">Historique ({{ (r.poids_hybrides.hist * 100) | round(0) }}%)</span><span>{{ r.proba_hist }}</span></div>
             {% else %}
             <div class="calib-src"><span class="label">Historique</span><span class="label">en attente (20+ obs.)</span></div>
+            {% endif %}
+            {% if r.poids_hybrides.source %}
+            <div class="calib-src" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
+                <span class="label">Source des poids</span>
+                <span style="color:#22d3ee; font-weight:bold;">{{ r.poids_hybrides.source }}</span>
+            </div>
             {% endif %}
         </div>
         {% endif %}
@@ -290,6 +321,10 @@
         <div class="seuil-item">
             <span class="seuil-label">Seuil Fiabilité</span>
             <span class="seuil-val">{{ seuils_amplifies.seuil_fiabilite }}</span>
+        </div>
+        <div class="seuil-item">
+            <span class="seuil-label">BMA</span>
+            <span class="seuil-val">{% if bma_actif %}ACTIF{% else %}Fallback{% endif %}</span>
         </div>
     </div>
     {% endif %}
@@ -367,4 +402,4 @@
     <a href="/" class="back">← Nouvelle analyse</a>
     <a href="/dashboard" class="back back-alt">📊 Dashboard</a>
 </body>
-                                                            </html>
+    </html>
