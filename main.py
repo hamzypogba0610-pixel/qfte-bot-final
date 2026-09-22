@@ -25,6 +25,7 @@ async def analyser(
     competition: str = Form(...),
     equipe1: str = Form(...),
     equipe2: str = Form(...),
+    surface: str = Form("dur"),
     cote_ouv_1: float = Form(...),
     cote_ferm_1: float = Form(...),
     cote_ouv_2: float = Form(...),
@@ -48,6 +49,7 @@ async def analyser(
         "competition": competition,
         "equipe1": equipe1,
         "equipe2": equipe2,
+        "surface": surface,
         "cote_ouverture": cote_ouv_1,
         "cote_actuelle": cote_ferm_1,
         "cote_ouv_2": cote_ouv_2,
@@ -97,6 +99,8 @@ async def analyser(
             "bma_actif": resultat.get("bma_actif", False),
             "basket_config": resultat.get("basket_config", {}),
             "tennis_config": resultat.get("tennis_config", {}),
+            "elo_info": resultat.get("elo_info", {}),
+            "blend_info": resultat.get("blend_info", {}),
         },
     )
 
@@ -129,4 +133,3 @@ async def dashboard(request: Request):
             "dernieres": dernieres,
         },
     )
-
