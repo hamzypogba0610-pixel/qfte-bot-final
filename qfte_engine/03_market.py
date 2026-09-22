@@ -1,4 +1,6 @@
 import math
+import importlib
+_elo_tennis = importlib.import_module("qfte_engine.18_elo_tennis")
 
 TOTAL_BUTS_PAR_COMPETITION = {
     "premier league": 2.9, "ligue 1": 2.7, "liga": 2.6, "serie a": 2.6,
@@ -33,23 +35,20 @@ BASKET_CONFIG = {
     },
 }
 
-# ============================================================
-# CONFIGURATION TENNIS
-# ============================================================
 TENNIS_CONFIG = {
-    "grand chelem": {           # Roland-Garros, Wimbledon, US Open, Australian Open
+    "grand chelem": {
         "best_of": 5,
-        "ligne_jeux": 32.5,     # ~32 jeux en best of 5
+        "ligne_jeux": 32.5,
         "sigma_jeux": 6.0,
         "moyenne_jeux_set": 9.5,
     },
-    "atp": {                    # Tournois ATP classiques
+    "atp": {
         "best_of": 3,
         "ligne_jeux": 22.5,
         "sigma_jeux": 4.5,
         "moyenne_jeux_set": 9.5,
     },
-    "wta": {                    # Tournois WTA
+    "wta": {
         "best_of": 3,
         "ligne_jeux": 21.5,
         "sigma_jeux": 4.5,
@@ -399,17 +398,18 @@ def _analyser_basket(data, match):
 
 def _analyser_tennis(data, match):
     """
-    Analyse tennis QFTE V23.0.
+    Analyse tennis QFTE V23.0 avec Elo.
 
-    Modèle :
-    - P(joueur gagne un set) déduit de la cote ML
-    - Loi binomiale (best of 3 ou 5 sets)
-    - Over/Under jeux via loi Normale
+    Améliorations V3 :
+    - Blending Elo + cote bookmaker (poids adaptatif selon confiance Elo)
+    - Elo spécifique à la surface (terre, gazon, dur, indoor)
+    - Traçabilité complète des Elo dans la sortie
     """
     co = float(match.get("cote_ouverture", 1.85))
     cf = float(match.get("cote_actuelle", 1.85))
     volume = float(match.get("volume", 50000))
     competition = match.get("competition", "")
+    surface = match.get("surface", "dur")
 
     contexte = data.get("contexte", {})
     forme = contexte.get("forme", {})
@@ -417,18 +417,30 @@ def _analyser_tennis(data, match):
 
     cfg = _config_tennis(competition)
     best_of = cfg["best_of"]
-    sets_pour_gagner = 2 if best_of == 3 else 3
     ligne_jeux = cfg["ligne_jeux"]
     sigma_jeux = cfg["sigma_jeux"]
     moyenne_jeux_set = cfg["moyenne_jeux_set"]
 
-    # --- Marge et proba ML ---
+    # --- Marge et proba ML depuis la cote ---
     marge = _marge_dynamique(co, cf)
     proba_impl = 1 / cf
     proba_demargee = proba_impl / (1 + marge)
     mouvement = (cf - co) / co if co > 0 else 0
     bonus_sharp = max(-0.02, min(0.03, -mouvement * 0.7))
-    proba_ml = max(0.10, min(0.90, proba_demargee + bonus_sharp))
+    proba_cote = max(0.10, min(0.90, proba_demargee + bonus_sharp))
+
+    # --- ✨ ELo : calcul de la proba selon Elo ---
+    joueur1 = match.get("equipe1", "")
+    joueur2 = match.get("equipe2", "")
+    elo_info = _elo_tennis.proba_elo(joueur1, joueur2, surface)
+
+    # --- Blending Elo + cote ---
+    blend = _elo_tennis.blend_elo_cote(
+        proba_cote,
+        elo_info["proba"],
+        elo_info["confiance_elo"],
+    )
+    proba_ml = blend["proba_finale"]
 
     # --- Ajustement par la forme ---
     forme_dom = float(forme.get("dom_finale", 0))
@@ -437,14 +449,10 @@ def _analyser_tennis(data, match):
     proba_ml = max(0.10, min(0.90, proba_ml))
 
     # --- Déduction de P(set) via le modèle binomial ---
-    # proba_ml = P(gagner sets_pour_gagner sets sur best_of)
-    # On cherche p_set tel que P = Σ C(n, k) p^k (1-p)^(n-k)
     def proba_match(p_set):
         if best_of == 3:
-            # Gagner 2-0 ou 2-1
             return (p_set ** 2) + 2 * (p_set ** 2) * (1 - p_set)
         else:
-            # Gagner 3-0, 3-1, 3-2
             return (p_set ** 3) + 3 * (p_set ** 3) * (1 - p_set) + 6 * (p_set ** 3) * ((1 - p_set) ** 2)
 
     lo, hi = 0.05, 0.95
@@ -469,7 +477,6 @@ def _analyser_tennis(data, match):
         proba_2_1 = proba_3_1
 
     # --- Estimation du total de jeux ---
-    # Nombre moyen de sets joués :
     if best_of == 3:
         nb_sets_moyen = 2 * (proba_2_0) + 3 * (proba_2_1) + 2 * (1 - proba_ml)
     else:
@@ -511,7 +518,9 @@ def _analyser_tennis(data, match):
     data["lambda_away"] = round(1 - p_set, 4)
     data["marge_estimee"] = marge
     data["total_buts_comp"] = round(total_jeux_estime, 2)
-    data["modele_lambda"] = "Binomial (tennis, best of " + str(best_of) + ")"
+    data["modele_lambda"] = "Binomial + Elo (best of " + str(best_of) + ")"
+    data["elo_info"] = elo_info
+    data["blend_info"] = blend
     data["tennis_config"] = {
         "type": ("Grand Chelem" if best_of == 5 else
                  ("WTA" if "wta" in (competition or "").lower() else
@@ -521,6 +530,7 @@ def _analyser_tennis(data, match):
         "sigma_jeux": sigma_jeux,
         "p_set": round(p_set, 4),
         "nb_sets_moyen": round(nb_sets_moyen, 2),
+        "surface": elo_info.get("surface", "dur"),
     }
     data["auto_ou"] = {
         "ev_over": round(ev_over, 4),
