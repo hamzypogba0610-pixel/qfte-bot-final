@@ -62,6 +62,8 @@
         .auto-ou-title { color: #22d3ee; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
         .copula-box { background: linear-gradient(135deg, #14000a, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f472b6; }
         .copula-title { color: #f472b6; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
+        .basket-box { background: linear-gradient(135deg, #0a1400, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #a3e635; }
+        .basket-title { color: #a3e635; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
         .signature-box { margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #0a0a0a, #141414); border-radius: 12px; border: 2px solid #2a2a2a; text-align: center; }
         .sig-diamant { border-color: #a78bfa; box-shadow: 0 0 20px rgba(167,139,250,0.3); }
         .sig-or { border-color: #facc15; box-shadow: 0 0 15px rgba(250,204,21,0.25); }
@@ -115,16 +117,47 @@
         <div class="ligne"><span class="label">Marge bookmaker estimée :</span> {{ (marge_estimee * 100) | round(1) }}%</div>
         {% endif %}
         {% if total_buts_comp != "-" %}
-        <div class="ligne"><span class="label">Total de buts (référence) :</span> {{ total_buts_comp }}</div>
+        <div class="ligne">
+            <span class="label">
+                {% if match.sport == "basket" %}Ligne totale estimée :{% else %}Total de buts (référence) :{% endif %}
+            </span>
+            {{ total_buts_comp }}
+        </div>
         {% endif %}
     </div>
+
+    {% if basket_config %}
+    <div class="basket-box">
+        <div class="basket-title">🏀 Configuration Basket</div>
+        <div class="ctx-row">
+            <span class="label">Type détecté</span>
+            <span class="ctx-val">{{ basket_config.type }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Ligne totale</span>
+            <span class="ctx-val">{{ basket_config.ligne_totale }} pts</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">σ écart-type</span>
+            <span class="ctx-val">{{ basket_config.sigma_ecart }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">σ total</span>
+            <span class="ctx-val">{{ basket_config.sigma_total }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Home Court Advantage</span>
+            <span class="ctx-val">+{{ basket_config.home_advantage }} pts</span>
+        </div>
+    </div>
+    {% endif %}
 
     {% if contexte %}
     <div class="match">
         <h2>🧠 Analyse contextuelle</h2>
 
         {% if contexte.scores and contexte.scores.dom_marques is not none %}
-        <h3>⚽ Moyennes de buts (scores réels)</h3>
+        <h3>⚽ Moyennes {{ 'de points' if match.sport == 'basket' else 'de buts' }} (scores réels)</h3>
         <div class="ctx-row">
             <span class="label">{{ match.equipe1 }} — marque à domicile</span>
             <span class="ctx-val">{{ contexte.scores.dom_marques }}</span>
@@ -155,7 +188,7 @@
 
         {% if contexte.h2h and contexte.h2h.n > 0 %}
         <h3>⚔️ Confrontations directes ({{ contexte.h2h.n }} matchs)</h3>
-        <div class="ctx-row"><span class="label">Moyenne buts H2H</span><span class="ctx-val">{{ contexte.h2h.moy_buts }}</span></div>
+        <div class="ctx-row"><span class="label">Moyenne {{ 'points' if match.sport == 'basket' else 'buts' }} H2H</span><span class="ctx-val">{{ contexte.h2h.moy_buts }}</span></div>
         <div class="ctx-row"><span class="label">Victoires {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.h2h.v_dom }}</span></div>
         <div class="ctx-row"><span class="label">Nuls</span><span class="ctx-val neutre">{{ contexte.h2h.nuls }}</span></div>
         <div class="ctx-row"><span class="label">Victoires {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.h2h.v_ext }}</span></div>
@@ -222,11 +255,11 @@
     <div class="auto-ou-box">
         <div class="auto-ou-title">🎯 Choix automatique Over/Under</div>
         <div class="ctx-row">
-            <span class="label">EV Over 2.5</span>
+            <span class="label">EV Over</span>
             <span class="ctx-val {% if auto_ou.ev_over < 0 %}neg{% endif %}">{{ (auto_ou.ev_over * 100) | round(2) }}%</span>
         </div>
         <div class="ctx-row">
-            <span class="label">EV Under 2.5</span>
+            <span class="label">EV Under</span>
             <span class="ctx-val {% if auto_ou.ev_under < 0 %}neg{% endif %}">{{ (auto_ou.ev_under * 100) | round(2) }}%</span>
         </div>
         <div class="ctx-row">
@@ -402,4 +435,4 @@
     <a href="/" class="back">← Nouvelle analyse</a>
     <a href="/dashboard" class="back back-alt">📊 Dashboard</a>
 </body>
-    </html>
+</html>
