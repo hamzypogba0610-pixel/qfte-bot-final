@@ -1,6 +1,7 @@
 """
 Calibration avancée QFTE V23.0.
 Combine hybride multi-source + 3 calibrateurs + FORMULE MAGIQUE QFTE FUSION.
+Version AVEC time-decay weighting.
 """
 from qfte_engine.calibrateurs import (
     entrainer_ensemble,
@@ -39,11 +40,15 @@ def calibrer_probabilites(data):
     mouvement = (cf - co) / co if co > 0 else 0
     marge_estimee = float(data.get("marge_estimee", 0.05))
 
+    # ---------- Chargement des calibrateurs entraînés (avec time-decay) ----------
     apprentissage = recuperer_donnees_apprentissage()
     ensembles = {}
     for nom_marche, donnees in apprentissage.items():
         if len(donnees["xs"]) >= 20:
-            ensembles[nom_marche] = entrainer_ensemble(donnees["xs"], donnees["ys"])
+            weights = donnees.get("ws", None)
+            ensembles[nom_marche] = entrainer_ensemble(
+                donnees["xs"], donnees["ys"], weights
+            )
 
     data["calibrateurs_actifs"] = len(ensembles)
 
