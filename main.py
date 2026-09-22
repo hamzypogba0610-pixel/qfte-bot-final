@@ -89,6 +89,7 @@ async def analyser(
             "modele_lambda": resultat.get("modele_lambda", "-"),
             "signature": resultat.get("signature", {}),
             "seuils_amplifies": resultat.get("seuils_amplifies", {}),
+            "auto_ou": resultat.get("auto_ou", {}),
         },
     )
 
@@ -120,4 +121,4 @@ async def dashboard(request: Request):
             "roi": roi,
             "dernieres": dernieres,
         },
-                            )
+                       )
