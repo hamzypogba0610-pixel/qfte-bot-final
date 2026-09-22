@@ -129,3 +129,197 @@ def _get_k_factor(competition):
         if nom in comp:
             return k
     return K_FACTORS["default"]
+
+
+
+# ============================================================
+# CALCUL DE LA PROBABILITÉ À PARTIR DE L'ELO
+# ============================================================
+def proba_elo(joueur1, joueur2, surface="dur"):
+    """
+    Probabilité que joueur1 batte joueur2, selon le modèle Elo.
+
+    Formule standard :
+    P(j1 gagne) = 1 / (1 + 10^((elo2 - elo1) / 400))
+
+    On utilise l'Elo SPÉCIFIQUE À LA SURFACE si disponible,
+    avec un blending 70% surface / 30% global pour plus de stabilité.
+    """
+    elo1 = get_joueur(joueur1)
+    elo2 = get_joueur(joueur2)
+    surf = _cle_surface(surface)
+
+    # Blending surface + global (70/30)
+    elo1_surface = elo1.get(surf, ELO_INITIAL)
+    elo2_surface = elo2.get(surf, ELO_INITIAL)
+    elo1_global = elo1.get("global", ELO_INITIAL)
+    elo2_global = elo2.get("global", ELO_INITIAL)
+
+    elo1_final = 0.70 * elo1_surface + 0.30 * elo1_global
+    elo2_final = 0.70 * elo2_surface + 0.30 * elo2_global
+
+    # Nombre de matchs (confiance dans l'Elo)
+    matchs1 = elo1.get("matchs", 0)
+    matchs2 = elo2.get("matchs", 0)
+
+    # Formule Elo classique
+    ecart = elo2_final - elo1_final
+    proba = 1.0 / (1.0 + 10 ** (ecart / 400.0))
+
+    # Confiance basée sur le nombre de matchs (max 1.0 à 30 matchs)
+    confiance_elo = min(1.0, (matchs1 + matchs2) / 60.0)
+
+    return {
+        "proba": round(proba, 4),
+        "elo1_surface": round(elo1_surface, 1),
+        "elo2_surface": round(elo2_surface, 1),
+        "elo1_global": round(elo1_global, 1),
+        "elo2_global": round(elo2_global, 1),
+        "elo1_final": round(elo1_final, 1),
+        "elo2_final": round(elo2_final, 1),
+        "ecart": round(ecart, 1),
+        "matchs1": matchs1,
+        "matchs2": matchs2,
+        "confiance_elo": round(confiance_elo, 3),
+        "surface": surf,
+    }
+
+
+# ============================================================
+# BLENDING ELO + COTE BOOKMAKER
+# ============================================================
+def blend_elo_cote(proba_cote, proba_elo_val, confiance_elo=0.5):
+    """
+    Combine la proba du bookmaker et celle de l'Elo.
+
+    Pondération adaptative :
+    - Si l'Elo a peu de données (confiance faible) → on fait
+      confiance au bookmaker
+    - Si l'Elo a beaucoup de données → on lui donne plus de poids
+
+    Formule :
+    poids_elo = 0.20 + 0.30 × confiance_elo   (entre 0.20 et 0.50)
+    poids_cote = 1 - poids_elo
+    """
+    poids_elo = 0.20 + 0.30 * confiance_elo
+    poids_cote = 1.0 - poids_elo
+
+    proba_finale = poids_cote * proba_cote + poids_elo * proba_elo_val
+
+    return {
+        "proba_finale": round(max(0.02, min(0.98, proba_finale)), 4),
+        "poids_elo": round(poids_elo, 4),
+        "poids_cote": round(poids_cote, 4),
+    }
+
+
+# ============================================================
+# MISE À JOUR APRÈS MATCH
+# ============================================================
+def _esperance_elo(elo1, elo2):
+    """Espérance de gain du joueur 1 (probabilité de victoire selon Elo)."""
+    return 1.0 / (1.0 + 10 ** ((elo2 - elo1) / 400.0))
+
+
+def _maj_elo_paire(elo_j1, elo_j2, k_factor):
+    """
+    Calcule les nouveaux Elo après un match.
+    Retourne (nouveau_elo_j1, nouveau_elo_j2).
+    """
+    e1 = _esperance_elo(elo_j1, elo_j2)
+    e2 = 1.0 - e1
+
+    # Score réel : 1 si le joueur 1 gagne, 0 sinon
+    s1 = 1.0
+    s2 = 0.0
+
+    new_elo_j1 = elo_j1 + k_factor * (s1 - e1)
+    new_elo_j2 = elo_j2 + k_factor * (s2 - e2)
+
+    # Bornes
+    new_elo_j1 = max(ELO_MIN, min(ELO_MAX, new_elo_j1))
+    new_elo_j2 = max(ELO_MIN, min(ELO_MAX, new_elo_j2))
+
+    return new_elo_j1, new_elo_j2
+
+
+def enregistrer_match(joueur_gagnant, joueur_perdant, surface="dur", competition=""):
+    """
+    Met à jour les Elo (global + surface) des 2 joueurs après un match.
+
+    - joueur_gagnant : nom du joueur qui a gagné
+    - joueur_perdant : nom du joueur qui a perdu
+    - surface : "terre", "gazon", "dur", "indoor"
+    - competition : utile pour le K-factor
+    """
+    k_factor = _get_k_factor(competition)
+    surf = _cle_surface(surface)
+
+    elo = _charger_elo()
+    cle1 = _normaliser_nom(joueur_gagnant)
+    cle2 = _normaliser_nom(joueur_perdant)
+
+    if not cle1 or not cle2:
+        return None
+
+    # Init profils si absents
+    for cle in (cle1, cle2):
+        if cle not in elo:
+            elo[cle] = {
+                "global": ELO_INITIAL,
+                "terre": ELO_INITIAL,
+                "gazon": ELO_INITIAL,
+                "dur": ELO_INITIAL,
+                "indoor": ELO_INITIAL,
+                "matchs": 0,
+            }
+
+    # --- Mise à jour Elo global ---
+    eg1, eg2 = _maj_elo_paire(elo[cle1]["global"], elo[cle2]["global"], k_factor)
+    elo[cle1]["global"] = round(eg1, 1)
+    elo[cle2]["global"] = round(eg2, 1)
+
+    # --- Mise à jour Elo surface ---
+    es1, es2 = _maj_elo_paire(elo[cle1][surf], elo[cle2][surf], k_factor)
+    elo[cle1][surf] = round(es1, 1)
+    elo[cle2][surf] = round(es2, 1)
+
+    # --- Incrément du compteur de matchs ---
+    elo[cle1]["matchs"] = elo[cle1].get("matchs", 0) + 1
+    elo[cle2]["matchs"] = elo[cle2].get("matchs", 0) + 1
+
+    _ecrire_elo(elo)
+
+    return {
+        "joueur_gagnant": cle1,
+        "joueur_perdant": cle2,
+        "surface": surf,
+        "k_factor": k_factor,
+        "nouveau_elo_gagnant_global": elo[cle1]["global"],
+        "nouveau_elo_perdant_global": elo[cle2]["global"],
+        "nouveau_elo_gagnant_surface": elo[cle1][surf],
+        "nouveau_elo_perdant_surface": elo[cle2][surf],
+    }
+
+
+def get_top_joueurs(n=10, surface=None):
+    """Retourne le top N des joueurs selon leur Elo global ou de surface."""
+    elo = _charger_elo()
+    if not elo:
+        return []
+    surf = _cle_surface(surface) if surface else None
+
+    classement = []
+    for nom, profil in elo.items():
+        if surf:
+            score = profil.get(surf, ELO_INITIAL)
+        else:
+            score = profil.get("global", ELO_INITIAL)
+        classement.append({
+            "nom": nom,
+            "elo": round(score, 1),
+            "matchs": profil.get("matchs", 0),
+        })
+
+    classement.sort(key=lambda x: x["elo"], reverse=True)
+    return classement[:n]
