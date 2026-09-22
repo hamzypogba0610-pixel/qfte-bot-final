@@ -13,7 +13,7 @@ _risk = importlib.import_module("qfte_engine.08_risk")
 _discipline = importlib.import_module("qfte_engine.09_discipline")
 _output = importlib.import_module("qfte_engine.10_output")
 _monitor = importlib.import_module("qfte_engine.11_monitor")
-_signature = importlib.import_module("qfte_engine.14_signature")
+_partenariat = importlib.import_module("qfte_engine.15_partenariat")
 
 
 def analyser_match(match):
@@ -30,5 +30,5 @@ def analyser_match(match):
     data = _discipline.appliquer_discipline(data)
     data = _output.formater_recommandation(data)
     data = _monitor.surveiller(data)
-    data = _signature.apposer_signature(data)   # ✨ COUCHE Ω ✨
+    data = _partenariat.apposer_signature(data)   # Σ Couche Partenariat
     return data
