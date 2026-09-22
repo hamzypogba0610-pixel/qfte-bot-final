@@ -1,7 +1,10 @@
 import json
 import os
 import math
+import importlib
 from datetime import datetime
+
+_elo_tennis = importlib.import_module("qfte_engine.18_elo_tennis")
 
 FICHIER_HISTORIQUE = "historique.json"
 BANKROLL_DEPART = 1000.0
@@ -52,6 +55,7 @@ def sauvegarder_analyse(match, resultat):
         "date": datetime.now().isoformat(),
         "sport": match.get("sport", "-"),
         "competition": match.get("competition", "-"),
+        "surface": match.get("surface", ""),
         "equipe1": match.get("equipe1", "-"),
         "equipe2": match.get("equipe2", "-"),
         "cotes": {
@@ -111,13 +115,11 @@ def _pari_gagne(marche, selection, score_home, score_away):
         return score_home > score_away
 
     if "over/under jeux" in marche_lower:
-        # En tennis, score_home / score_away = nombre de jeux
         if "under" in selection:
             return total < 22.5
         return total > 22.5
 
     if "score exact" in marche_lower or "score 2-0" in marche_lower:
-        # Score exact en sets : on suppose score_home > score_away pour 2-0
         return score_home > score_away and score_away == 0
 
     return False
@@ -155,9 +157,55 @@ def enregistrer_resultat(id_unique, score_home, score_away, marches_joues):
                 "date_resultat": datetime.now().isoformat(),
             }
             _ecrire_historique(historique)
+
+            # ✨ Mise à jour Elo Tennis si applicable
+            if h.get("sport", "") == "tennis":
+                _maj_elo_tennis(h, score_home, score_away)
+
             return h
 
     return None
+
+
+
+def _maj_elo_tennis(h, score_home, score_away):
+    """
+    ✨ Mise à jour Elo Tennis après un match enregistré.
+
+    - Détermine le gagnant/perdant à partir des scores en sets
+    - Récupère la surface depuis l'entrée historique
+    - Appelle enregistrer_match() du module Elo
+    """
+    try:
+        equipe1 = h.get("equipe1", "")
+        equipe2 = h.get("equipe2", "")
+        surface = h.get("surface", "dur")
+        competition = h.get("competition", "")
+
+        if not equipe1 or not equipe2:
+            return None
+
+        # Score en sets : score_home = sets joueur 1, score_away = sets joueur 2
+        if score_home > score_away:
+            gagnant, perdant = equipe1, equipe2
+        elif score_away > score_home:
+            gagnant, perdant = equipe2, equipe1
+        else:
+            # Pas de match nul au tennis → on ignore
+            return None
+
+        resultat_maj = _elo_tennis.enregistrer_match(
+            gagnant, perdant, surface=surface, competition=competition
+        )
+
+        # Sauvegarde de l'info Elo dans l'entrée historique
+        h["elo_maj"] = resultat_maj
+        return resultat_maj
+
+    except Exception as e:
+        # On ne bloque jamais l'enregistrement à cause de l'Elo
+        h["elo_erreur"] = str(e)
+        return None
 
 
 def calculer_roi():
@@ -200,8 +248,7 @@ def calculer_roi():
         "paris_gagnes": paris_gagnes,
         "paris_perdus": paris_perdus,
         "total_mise": round(total_mise, 2),
-                  }
-
+    }
 
 
 def calculer_statistiques():
@@ -262,10 +309,6 @@ def recuperer_donnees_apprentissage():
     """
     Extrait les paires (proba_prédite, résultat) + poids temporel,
     AVEC PRÉFIXAGE PAR SPORT dans les clés.
-
-    Clé retournée : "football|Handicap Asiatique -0.5",
-                    "basket|Money Line",
-                    "tennis|Vainqueur", etc.
     """
     historique = charger_historique()
     data = {}
