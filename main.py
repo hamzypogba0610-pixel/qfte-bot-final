@@ -47,6 +47,16 @@ async def analyser(
     matchs_7j_j2: int = Form(0),
     matchs_14j_j1: int = Form(0),
     matchs_14j_j2: int = Form(0),
+    matchs_7j_dom: int = Form(0),
+    matchs_14j_dom: int = Form(0),
+    jours_repos_dom: int = Form(7),
+    competition_suivante_dom: str = Form(""),
+    jours_avant_suivant_dom: int = Form(7),
+    matchs_7j_ext: int = Form(0),
+    matchs_14j_ext: int = Form(0),
+    jours_repos_ext: int = Form(7),
+    competition_suivante_ext: str = Form(""),
+    jours_avant_suivant_ext: int = Form(7),
 ):
     match = {
         "sport": sport,
@@ -75,6 +85,16 @@ async def analyser(
         "matchs_7j_j2": matchs_7j_j2,
         "matchs_14j_j1": matchs_14j_j1,
         "matchs_14j_j2": matchs_14j_j2,
+        "matchs_7j_dom": matchs_7j_dom,
+        "matchs_14j_dom": matchs_14j_dom,
+        "jours_repos_dom": jours_repos_dom,
+        "competition_suivante_dom": competition_suivante_dom,
+        "jours_avant_suivant_dom": jours_avant_suivant_dom,
+        "matchs_7j_ext": matchs_7j_ext,
+        "matchs_14j_ext": matchs_14j_ext,
+        "jours_repos_ext": jours_repos_ext,
+        "competition_suivante_ext": competition_suivante_ext,
+        "jours_avant_suivant_ext": jours_avant_suivant_ext,
     }
 
     resultat = analyser_match(match)
@@ -111,6 +131,8 @@ async def analyser(
             "blend_info": resultat.get("blend_info", {}),
             "momentum_info": resultat.get("momentum_info", {}),
             "fatigue_info": resultat.get("fatigue_info", {}),
+            "calendrier": resultat.get("calendrier", {}),
+            "impact_calendrier_lambda": resultat.get("impact_calendrier_lambda", {}),
         },
     )
 
