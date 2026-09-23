@@ -10,6 +10,7 @@
         h2 { color: #facc15; margin-top: 25px; font-size: 16px; border-bottom: 1px solid #333; padding-bottom: 5px; }
         label { display: block; margin-top: 12px; font-weight: bold; font-size: 14px; }
         input, select { width: 100%; padding: 10px; margin-top: 4px; border-radius: 6px; border: 1px solid #333; background: #1a1a1a; color: #eee; box-sizing: border-box; }
+        input[type="checkbox"] { width: auto; margin-right: 8px; }
         button { margin-top: 20px; width: 100%; padding: 12px; background: #4ade80; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 16px; }
         .lien-dashboard { text-align: center; margin-top: 10px; }
         .lien-dashboard a { color: #60a5fa; text-decoration: none; }
@@ -18,6 +19,9 @@
         .row > div { flex: 1; }
         .bloc-calendrier { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #3b82f6; }
         .bloc-calendrier h3 { color: #3b82f6; margin-top: 0; font-size: 14px; }
+        .bloc-calendrier-basket { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #a3e635; }
+        .bloc-calendrier-basket h3 { color: #a3e635; margin-top: 0; font-size: 14px; }
+        .coche-bloc { margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -44,7 +48,6 @@
                 <option value="gazon">Gazon (Wimbledon, Halle)</option>
                 <option value="indoor">Indoor (Paris Masters, ATP Finals)</option>
             </select>
-            <div class="aide">Impacte fortement les probabilités (Nadal sur terre ≠ Nadal sur gazon)</div>
         </div>
 
         <label id="label_equipe1">Équipe 1 (à domicile)</label>
@@ -58,7 +61,6 @@
 
             <label>Matchs joués sur les 7 derniers jours — Joueur 1</label>
             <input type="number" name="matchs_7j_j1" value="0" min="0" max="10">
-            <div class="aide">0 = bien reposé / 5+ = tournoi en cours intense</div>
 
             <label>Matchs joués sur les 7 derniers jours — Joueur 2</label>
             <input type="number" name="matchs_7j_j2" value="0" min="0" max="10">
@@ -77,26 +79,22 @@
             </div>
 
             <div class="bloc-calendrier">
-                <h3>🏠 Équipe 1 (domicile) — {{ 'Liverpool' if False }}</h3>
+                <h3>🏠 Équipe 1 (domicile)</h3>
 
                 <label>Matchs joués sur les 7 derniers jours</label>
                 <input type="number" name="matchs_7j_dom" value="0" min="0" max="5">
-                <div class="aide">0 = pas de match / 3 = semaine chargée</div>
 
                 <label>Matchs joués sur les 14 derniers jours</label>
                 <input type="number" name="matchs_14j_dom" value="0" min="0" max="10">
 
                 <label>Jours de repos avant ce match</label>
                 <input type="number" name="jours_repos_dom" value="7" min="0" max="30">
-                <div class="aide">7+ = bien reposé / 2-3 = juste après un match</div>
 
                 <label>Compétition du match suivant (optionnel)</label>
-                <input type="text" name="competition_suivante_dom" placeholder="Ex: Champions League, Coupe de France">
-                <div class="aide">Laisse vide si aucun match important à venir</div>
+                <input type="text" name="competition_suivante_dom" placeholder="Ex: Champions League">
 
                 <label>Jours avant le match suivant</label>
                 <input type="number" name="jours_avant_suivant_dom" value="7" min="0" max="30">
-                <div class="aide">2-4 jours = rotation probable</div>
             </div>
 
             <div class="bloc-calendrier">
@@ -112,10 +110,59 @@
                 <input type="number" name="jours_repos_ext" value="7" min="0" max="30">
 
                 <label>Compétition du match suivant (optionnel)</label>
-                <input type="text" name="competition_suivante_ext" placeholder="Ex: Champions League, Coupe de France">
+                <input type="text" name="competition_suivante_ext" placeholder="Ex: Champions League">
 
                 <label>Jours avant le match suivant</label>
                 <input type="number" name="jours_avant_suivant_ext" value="7" min="0" max="30">
+            </div>
+        </div>
+
+        <div id="bloc_calendrier_basket" style="display: none;">
+            <h2>🏀 Calendrier Basket (NBA/EuroLeague)</h2>
+            <div class="aide" style="margin-bottom: 10px;">
+                Impacte l'écart attendu (back-to-back = -3.5 pts en moyenne).
+            </div>
+
+            <div class="bloc-calendrier-basket">
+                <h3>🏠 Équipe 1 (domicile)</h3>
+
+                <label>Jours de repos avant ce match</label>
+                <input type="number" name="jours_repos_dom_basket" value="2" min="0" max="10">
+                <div class="aide">2 = normal NBA / 1 = back-to-back / 0 = 2 matchs en 2 jours</div>
+
+                <label>Matchs joués sur les 4 derniers jours</label>
+                <input type="number" name="matchs_4j_dom_basket" value="0" min="0" max="5">
+                <div class="aide">3+ = 3 matchs en 4 nuits</div>
+
+                <label class="coche-bloc">
+                    <input type="checkbox" name="back_to_back_dom_basket">
+                    En back-to-back (match hier)
+                </label>
+
+                <label class="coche-bloc">
+                    <input type="checkbox" name="voyage_long_dom_basket">
+                    Voyage long (côte à côte)
+                </label>
+            </div>
+
+            <div class="bloc-calendrier-basket">
+                <h3>✈️ Équipe 2 (extérieur)</h3>
+
+                <label>Jours de repos avant ce match</label>
+                <input type="number" name="jours_repos_ext_basket" value="2" min="0" max="10">
+
+                <label>Matchs joués sur les 4 derniers jours</label>
+                <input type="number" name="matchs_4j_ext_basket" value="0" min="0" max="5">
+
+                <label class="coche-bloc">
+                    <input type="checkbox" name="back_to_back_ext_basket">
+                    En back-to-back (match hier)
+                </label>
+
+                <label class="coche-bloc">
+                    <input type="checkbox" name="voyage_long_ext_basket">
+                    Voyage long (côte à côte)
+                </label>
             </div>
         </div>
 
@@ -179,7 +226,7 @@
         <input type="number" name="volume" value="50000" required>
 
         <button type="submit">Analyser</button>
-                                                      </form>
+                    </form>
 
     
     <script>
@@ -187,6 +234,7 @@
         const blocSurface = document.getElementById("bloc_surface");
         const blocFatigue = document.getElementById("bloc_fatigue");
         const blocCalendrier = document.getElementById("bloc_calendrier");
+        const blocCalendrierBasket = document.getElementById("bloc_calendrier_basket");
 
         function majLabels() {
             const sport = selectSport.value;
@@ -214,6 +262,7 @@
                 blocSurface.style.display = "block";
                 blocFatigue.style.display = "block";
                 blocCalendrier.style.display = "none";
+                blocCalendrierBasket.style.display = "none";
                 eq1.textContent = "Joueur 1";
                 eq2.textContent = "Joueur 2";
                 c1.textContent = "Cote Joueur 1 — Ouverture / Fermeture";
@@ -237,6 +286,7 @@
                 blocSurface.style.display = "none";
                 blocFatigue.style.display = "none";
                 blocCalendrier.style.display = "none";
+                blocCalendrierBasket.style.display = "block";
                 eq1.textContent = "Équipe 1 (à domicile)";
                 eq2.textContent = "Équipe 2 (à l'extérieur)";
                 c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
@@ -260,6 +310,7 @@
                 blocSurface.style.display = "none";
                 blocFatigue.style.display = "none";
                 blocCalendrier.style.display = "block";
+                blocCalendrierBasket.style.display = "none";
                 eq1.textContent = "Équipe 1 (à domicile)";
                 eq2.textContent = "Équipe 2 (à l'extérieur)";
                 c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
