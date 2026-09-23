@@ -43,10 +43,12 @@ async def analyser(
     cote_over25: float = Form(...),
     cote_btts: float = Form(...),
     volume: int = Form(...),
+    # Champs tennis
     matchs_7j_j1: int = Form(0),
     matchs_7j_j2: int = Form(0),
     matchs_14j_j1: int = Form(0),
     matchs_14j_j2: int = Form(0),
+    # Champs calendrier football
     matchs_7j_dom: int = Form(0),
     matchs_14j_dom: int = Form(0),
     jours_repos_dom: int = Form(7),
@@ -57,6 +59,15 @@ async def analyser(
     jours_repos_ext: int = Form(7),
     competition_suivante_ext: str = Form(""),
     jours_avant_suivant_ext: int = Form(7),
+    # Champs calendrier basket
+    jours_repos_dom_basket: int = Form(2),
+    matchs_4j_dom_basket: int = Form(0),
+    voyage_long_dom_basket: str = Form(""),
+    back_to_back_dom_basket: str = Form(""),
+    jours_repos_ext_basket: int = Form(2),
+    matchs_4j_ext_basket: int = Form(0),
+    voyage_long_ext_basket: str = Form(""),
+    back_to_back_ext_basket: str = Form(""),
 ):
     match = {
         "sport": sport,
@@ -95,6 +106,14 @@ async def analyser(
         "jours_repos_ext": jours_repos_ext,
         "competition_suivante_ext": competition_suivante_ext,
         "jours_avant_suivant_ext": jours_avant_suivant_ext,
+        "jours_repos_dom_basket": jours_repos_dom_basket,
+        "matchs_4j_dom_basket": matchs_4j_dom_basket,
+        "voyage_long_dom_basket": bool(voyage_long_dom_basket),
+        "back_to_back_dom_basket": bool(back_to_back_dom_basket),
+        "jours_repos_ext_basket": jours_repos_ext_basket,
+        "matchs_4j_ext_basket": matchs_4j_ext_basket,
+        "voyage_long_ext_basket": bool(voyage_long_ext_basket),
+        "back_to_back_ext_basket": bool(back_to_back_ext_basket),
     }
 
     resultat = analyser_match(match)
@@ -133,6 +152,8 @@ async def analyser(
             "fatigue_info": resultat.get("fatigue_info", {}),
             "calendrier": resultat.get("calendrier", {}),
             "impact_calendrier_lambda": resultat.get("impact_calendrier_lambda", {}),
+            "calendrier_basket": resultat.get("calendrier_basket", {}),
+            "impact_calendrier_basket": resultat.get("impact_calendrier_basket", {}),
         },
     )
 
