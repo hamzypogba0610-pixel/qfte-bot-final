@@ -171,7 +171,6 @@ def _analyser_football(data, match):
     elif h2h.get("domine") == "ext":
         lambda_away += 0.10; lambda_home -= 0.05
 
-    # ✨ AJUSTEMENT PAR LE CALENDRIER
     calendrier = data.get("calendrier", {})
     impact_cal_dom = 0.0
     impact_cal_ext = 0.0
@@ -284,6 +283,16 @@ def _analyser_basket(data, match):
 
     ecart_moyen += home_advantage * 0.4
 
+    # ✨ AJUSTEMENT PAR LE CALENDRIER BASKET
+    calendrier_basket = data.get("calendrier_basket", {})
+    impact_cal_dom_pts = 0.0
+    impact_cal_ext_pts = 0.0
+    if calendrier_basket:
+        impact_cal_dom_pts = float(calendrier_basket.get("dom", {}).get("score_points", 0) or 0)
+        impact_cal_ext_pts = float(calendrier_basket.get("ext", {}).get("score_points", 0) or 0)
+        diff_pts = impact_cal_dom_pts - impact_cal_ext_pts
+        ecart_moyen += diff_pts
+
     scores_ctx = contexte.get("scores", {})
     dom_marques = scores_ctx.get("dom_marques")
     ext_marques = scores_ctx.get("ext_marques")
@@ -302,6 +311,11 @@ def _analyser_basket(data, match):
         total_points_estime = ligne_totale
 
     total_points_estime += (forme_dom + forme_ext) * 1.5
+
+    # Impact du calendrier sur le TOTAL (équipe fatiguée marque moins)
+    impact_cal_total = (impact_cal_dom_pts + impact_cal_ext_pts) * 0.3
+    total_points_estime += impact_cal_total
+
     total_points_estime = max(ligne_totale * 0.75, min(ligne_totale * 1.25, total_points_estime))
 
     proba_over_tot = 1 - norm_cdf(ligne_totale, total_points_estime, sigma_total)
@@ -337,7 +351,7 @@ def _analyser_basket(data, match):
     data["lambda_away"] = 0
     data["marge_estimee"] = marge
     data["total_buts_comp"] = round(total_points_estime, 2)
-    data["modele_lambda"] = "Normale (basket " + competition + ")"
+    data["modele_lambda"] = "Normale + calendrier (basket " + competition + ")"
     data["basket_config"] = {
         "type": "NBA" if "nba" in (competition or "").lower() else
                 ("EuroLeague" if "euro" in (competition or "").lower() else "Standard"),
@@ -345,6 +359,12 @@ def _analyser_basket(data, match):
         "sigma_ecart": sigma_ecart,
         "sigma_total": sigma_total,
         "home_advantage": home_advantage,
+    }
+    data["impact_calendrier_basket"] = {
+        "dom_points": round(impact_cal_dom_pts, 2),
+        "ext_points": round(impact_cal_ext_pts, 2),
+        "diff_ecart": round(impact_cal_dom_pts - impact_cal_ext_pts, 2),
+        "impact_total": round(impact_cal_total, 2),
     }
     data["auto_ou"] = {
         "ev_over": round(ev_over, 4),
