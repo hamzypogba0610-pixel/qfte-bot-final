@@ -169,7 +169,6 @@ def analyser_marche(data):
     return _analyser_football(data, match)
 
 
-
 def _analyser_football(data, match):
     co = float(match.get("cote_ouverture", 2.0))
     cf = float(match.get("cote_actuelle", 2.0))
@@ -396,14 +395,16 @@ def _analyser_basket(data, match):
     return data
 
 
+
 def _analyser_tennis(data, match):
     """
-    Analyse tennis QFTE V23.0 avec Elo.
+    Analyse tennis QFTE V23.0 avec Elo + Momentum + Fatigue.
 
-    Améliorations V3 :
-    - Blending Elo + cote bookmaker (poids adaptatif selon confiance Elo)
-    - Elo spécifique à la surface (terre, gazon, dur, indoor)
-    - Traçabilité complète des Elo dans la sortie
+    Améliorations T2 :
+    - Blending Elo + cote bookmaker
+    - Elo spécifique à la surface
+    - ✨ Momentum (5 derniers matchs)
+    - ✨ Fatigue (matchs sur 7j et 14j)
     """
     co = float(match.get("cote_ouverture", 1.85))
     cf = float(match.get("cote_actuelle", 1.85))
@@ -429,7 +430,7 @@ def _analyser_tennis(data, match):
     bonus_sharp = max(-0.02, min(0.03, -mouvement * 0.7))
     proba_cote = max(0.10, min(0.90, proba_demargee + bonus_sharp))
 
-    # --- ✨ ELo : calcul de la proba selon Elo ---
+    # --- Elo ---
     joueur1 = match.get("equipe1", "")
     joueur2 = match.get("equipe2", "")
     elo_info = _elo_tennis.proba_elo(joueur1, joueur2, surface)
@@ -442,10 +443,33 @@ def _analyser_tennis(data, match):
     )
     proba_ml = blend["proba_finale"]
 
-    # --- Ajustement par la forme ---
+    # --- ✨ MOMENTUM ---
+    momentum_j1 = _elo_tennis.calculer_momentum(joueur1, n_recent=5)
+    momentum_j2 = _elo_tennis.calculer_momentum(joueur2, n_recent=5)
+    diff_momentum = momentum_j1["score"] - momentum_j2["score"]
+    # Impact max : ±0.03 sur la proba
+    impact_momentum = diff_momentum * 0.03
+    proba_ml += impact_momentum
+
+    # --- ✨ FATIGUE ---
+    matchs_7j_j1 = int(match.get("matchs_7j_j1", 0) or 0)
+    matchs_7j_j2 = int(match.get("matchs_7j_j2", 0) or 0)
+    matchs_14j_j1 = int(match.get("matchs_14j_j1", 0) or 0)
+    matchs_14j_j2 = int(match.get("matchs_14j_j2", 0) or 0)
+
+    fatigue_j1 = _elo_tennis.calculer_fatigue(matchs_7j_j1, matchs_14j_j1)
+    fatigue_j2 = _elo_tennis.calculer_fatigue(matchs_7j_j2, matchs_14j_j2)
+    diff_fatigue = fatigue_j1["score"] - fatigue_j2["score"]
+    # Impact max : ±0.02 sur la proba
+    impact_fatigue = diff_fatigue * 0.02
+    proba_ml += impact_fatigue
+
+    # --- Ajustement par la forme (V/N/D) ---
     forme_dom = float(forme.get("dom_finale", 0))
     forme_ext = float(forme.get("ext_finale", 0))
-    proba_ml += (forme_dom - forme_ext) * 0.03
+    proba_ml += (forme_dom - forme_ext) * 0.02
+
+    # Bornes finales
     proba_ml = max(0.10, min(0.90, proba_ml))
 
     # --- Déduction de P(set) via le modèle binomial ---
@@ -518,9 +542,21 @@ def _analyser_tennis(data, match):
     data["lambda_away"] = round(1 - p_set, 4)
     data["marge_estimee"] = marge
     data["total_buts_comp"] = round(total_jeux_estime, 2)
-    data["modele_lambda"] = "Binomial + Elo (best of " + str(best_of) + ")"
+    data["modele_lambda"] = "Binomial + Elo + Momentum + Fatigue (best of " + str(best_of) + ")"
     data["elo_info"] = elo_info
     data["blend_info"] = blend
+    data["momentum_info"] = {
+        "j1": momentum_j1,
+        "j2": momentum_j2,
+        "diff": round(diff_momentum, 3),
+        "impact_proba": round(impact_momentum, 4),
+    }
+    data["fatigue_info"] = {
+        "j1": fatigue_j1,
+        "j2": fatigue_j2,
+        "diff": round(diff_fatigue, 3),
+        "impact_proba": round(impact_fatigue, 4),
+    }
     data["tennis_config"] = {
         "type": ("Grand Chelem" if best_of == 5 else
                  ("WTA" if "wta" in (competition or "").lower() else
