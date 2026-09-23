@@ -9,68 +9,25 @@ TOTAL_BUTS_PAR_COMPETITION = {
 }
 
 BASKET_CONFIG = {
-    "nba": {
-        "total_defaut": 220.5,
-        "sigma_total": 19.0,
-        "sigma_ecart": 13.5,
-        "home_court_advantage": 2.5,
-    },
-    "euroleague": {
-        "total_defaut": 160.5,
-        "sigma_total": 14.0,
-        "sigma_ecart": 10.5,
-        "home_court_advantage": 3.0,
-    },
-    "euro": {
-        "total_defaut": 160.5,
-        "sigma_total": 14.0,
-        "sigma_ecart": 10.5,
-        "home_court_advantage": 3.0,
-    },
-    "default": {
-        "total_defaut": 180.5,
-        "sigma_total": 17.0,
-        "sigma_ecart": 12.0,
-        "home_court_advantage": 2.8,
-    },
+    "nba": {"total_defaut": 220.5, "sigma_total": 19.0, "sigma_ecart": 13.5, "home_court_advantage": 2.5},
+    "euroleague": {"total_defaut": 160.5, "sigma_total": 14.0, "sigma_ecart": 10.5, "home_court_advantage": 3.0},
+    "euro": {"total_defaut": 160.5, "sigma_total": 14.0, "sigma_ecart": 10.5, "home_court_advantage": 3.0},
+    "default": {"total_defaut": 180.5, "sigma_total": 17.0, "sigma_ecart": 12.0, "home_court_advantage": 2.8},
 }
 
 TENNIS_CONFIG = {
-    "grand chelem": {
-        "best_of": 5,
-        "ligne_jeux": 32.5,
-        "sigma_jeux": 6.0,
-        "moyenne_jeux_set": 9.5,
-    },
-    "atp": {
-        "best_of": 3,
-        "ligne_jeux": 22.5,
-        "sigma_jeux": 4.5,
-        "moyenne_jeux_set": 9.5,
-    },
-    "wta": {
-        "best_of": 3,
-        "ligne_jeux": 21.5,
-        "sigma_jeux": 4.5,
-        "moyenne_jeux_set": 9.0,
-    },
-    "default": {
-        "best_of": 3,
-        "ligne_jeux": 22.5,
-        "sigma_jeux": 4.5,
-        "moyenne_jeux_set": 9.5,
-    },
+    "grand chelem": {"best_of": 5, "ligne_jeux": 32.5, "sigma_jeux": 6.0, "moyenne_jeux_set": 9.5},
+    "atp": {"best_of": 3, "ligne_jeux": 22.5, "sigma_jeux": 4.5, "moyenne_jeux_set": 9.5},
+    "wta": {"best_of": 3, "ligne_jeux": 21.5, "sigma_jeux": 4.5, "moyenne_jeux_set": 9.0},
+    "default": {"best_of": 3, "ligne_jeux": 22.5, "sigma_jeux": 4.5, "moyenne_jeux_set": 9.5},
 }
 
 
 def _config_basket(competition):
     comp = (competition or "").lower().strip()
-    if "nba" in comp:
-        return BASKET_CONFIG["nba"]
-    if "euroleague" in comp or "euroligue" in comp:
-        return BASKET_CONFIG["euroleague"]
-    if "euro" in comp:
-        return BASKET_CONFIG["euro"]
+    if "nba" in comp: return BASKET_CONFIG["nba"]
+    if "euroleague" in comp or "euroligue" in comp: return BASKET_CONFIG["euroleague"]
+    if "euro" in comp: return BASKET_CONFIG["euro"]
     return BASKET_CONFIG["default"]
 
 
@@ -78,10 +35,8 @@ def _config_tennis(competition):
     comp = (competition or "").lower().strip()
     if any(x in comp for x in ["roland", "wimbledon", "us open", "australian", "grand chelem", "grand slam"]):
         return TENNIS_CONFIG["grand chelem"]
-    if "wta" in comp:
-        return TENNIS_CONFIG["wta"]
-    if "atp" in comp:
-        return TENNIS_CONFIG["atp"]
+    if "wta" in comp: return TENNIS_CONFIG["wta"]
+    if "atp" in comp: return TENNIS_CONFIG["atp"]
     return TENNIS_CONFIG["default"]
 
 
@@ -169,6 +124,7 @@ def analyser_marche(data):
     return _analyser_football(data, match)
 
 
+
 def _analyser_football(data, match):
     co = float(match.get("cote_ouverture", 2.0))
     cf = float(match.get("cote_actuelle", 2.0))
@@ -215,6 +171,16 @@ def _analyser_football(data, match):
     elif h2h.get("domine") == "ext":
         lambda_away += 0.10; lambda_home -= 0.05
 
+    # ✨ AJUSTEMENT PAR LE CALENDRIER
+    calendrier = data.get("calendrier", {})
+    impact_cal_dom = 0.0
+    impact_cal_ext = 0.0
+    if calendrier:
+        impact_cal_dom = float(calendrier.get("dom", {}).get("impact_lambda", 0) or 0)
+        impact_cal_ext = float(calendrier.get("ext", {}).get("impact_lambda", 0) or 0)
+        lambda_home += impact_cal_dom
+        lambda_away += impact_cal_ext
+
     lambda_home = max(0.20, lambda_home)
     lambda_away = max(0.20, lambda_away)
 
@@ -249,7 +215,11 @@ def _analyser_football(data, match):
     data["lambda_away"] = round(lambda_away, 3)
     data["marge_estimee"] = marge
     data["total_buts_comp"] = round(total_buts, 2)
-    data["modele_lambda"] = "mixte (marché + scores)" if has_data else "marché seul"
+    data["modele_lambda"] = "mixte + calendrier" if has_data else "marché + calendrier"
+    data["impact_calendrier_lambda"] = {
+        "dom": round(impact_cal_dom, 3),
+        "ext": round(impact_cal_ext, 3),
+    }
     data["auto_ou"] = {
         "ev_over": round(ev_over, 4),
         "ev_under": round(ev_under, 4),
@@ -268,6 +238,7 @@ def _analyser_football(data, match):
          "proba_juste": round(proba_btts_val, 4), "mouvement": round(mouvement * 0.6, 4)},
     ]
     return data
+
 
 
 def _analyser_basket(data, match):
@@ -397,15 +368,6 @@ def _analyser_basket(data, match):
 
 
 def _analyser_tennis(data, match):
-    """
-    Analyse tennis QFTE V23.0 avec Elo + Momentum + Fatigue.
-
-    Améliorations T2 :
-    - Blending Elo + cote bookmaker
-    - Elo spécifique à la surface
-    - ✨ Momentum (5 derniers matchs)
-    - ✨ Fatigue (matchs sur 7j et 14j)
-    """
     co = float(match.get("cote_ouverture", 1.85))
     cf = float(match.get("cote_actuelle", 1.85))
     volume = float(match.get("volume", 50000))
@@ -422,7 +384,6 @@ def _analyser_tennis(data, match):
     sigma_jeux = cfg["sigma_jeux"]
     moyenne_jeux_set = cfg["moyenne_jeux_set"]
 
-    # --- Marge et proba ML depuis la cote ---
     marge = _marge_dynamique(co, cf)
     proba_impl = 1 / cf
     proba_demargee = proba_impl / (1 + marge)
@@ -430,12 +391,10 @@ def _analyser_tennis(data, match):
     bonus_sharp = max(-0.02, min(0.03, -mouvement * 0.7))
     proba_cote = max(0.10, min(0.90, proba_demargee + bonus_sharp))
 
-    # --- Elo ---
     joueur1 = match.get("equipe1", "")
     joueur2 = match.get("equipe2", "")
     elo_info = _elo_tennis.proba_elo(joueur1, joueur2, surface)
 
-    # --- Blending Elo + cote ---
     blend = _elo_tennis.blend_elo_cote(
         proba_cote,
         elo_info["proba"],
@@ -443,15 +402,12 @@ def _analyser_tennis(data, match):
     )
     proba_ml = blend["proba_finale"]
 
-    # --- ✨ MOMENTUM ---
     momentum_j1 = _elo_tennis.calculer_momentum(joueur1, n_recent=5)
     momentum_j2 = _elo_tennis.calculer_momentum(joueur2, n_recent=5)
     diff_momentum = momentum_j1["score"] - momentum_j2["score"]
-    # Impact max : ±0.03 sur la proba
     impact_momentum = diff_momentum * 0.03
     proba_ml += impact_momentum
 
-    # --- ✨ FATIGUE ---
     matchs_7j_j1 = int(match.get("matchs_7j_j1", 0) or 0)
     matchs_7j_j2 = int(match.get("matchs_7j_j2", 0) or 0)
     matchs_14j_j1 = int(match.get("matchs_14j_j1", 0) or 0)
@@ -460,19 +416,15 @@ def _analyser_tennis(data, match):
     fatigue_j1 = _elo_tennis.calculer_fatigue(matchs_7j_j1, matchs_14j_j1)
     fatigue_j2 = _elo_tennis.calculer_fatigue(matchs_7j_j2, matchs_14j_j2)
     diff_fatigue = fatigue_j1["score"] - fatigue_j2["score"]
-    # Impact max : ±0.02 sur la proba
     impact_fatigue = diff_fatigue * 0.02
     proba_ml += impact_fatigue
 
-    # --- Ajustement par la forme (V/N/D) ---
     forme_dom = float(forme.get("dom_finale", 0))
     forme_ext = float(forme.get("ext_finale", 0))
     proba_ml += (forme_dom - forme_ext) * 0.02
 
-    # Bornes finales
     proba_ml = max(0.10, min(0.90, proba_ml))
 
-    # --- Déduction de P(set) via le modèle binomial ---
     def proba_match(p_set):
         if best_of == 3:
             return (p_set ** 2) + 2 * (p_set ** 2) * (1 - p_set)
@@ -489,7 +441,6 @@ def _analyser_tennis(data, match):
             hi = mid
     p_set = (lo + hi) / 2
 
-    # --- Probas des scores de sets ---
     if best_of == 3:
         proba_2_0 = p_set ** 2
         proba_2_1 = 2 * (p_set ** 2) * (1 - p_set)
@@ -500,7 +451,6 @@ def _analyser_tennis(data, match):
         proba_2_0 = proba_3_0
         proba_2_1 = proba_3_1
 
-    # --- Estimation du total de jeux ---
     if best_of == 3:
         nb_sets_moyen = 2 * (proba_2_0) + 3 * (proba_2_1) + 2 * (1 - proba_ml)
     else:
@@ -513,7 +463,6 @@ def _analyser_tennis(data, match):
     proba_over_jeux = max(0.15, min(0.85, proba_over_jeux))
     proba_under_jeux = 1 - proba_over_jeux
 
-    # --- Auto-détection Over/Under ---
     cote_over_brute = float(match.get("cote_over25") or 0)
     if cote_over_brute <= 0:
         cote_over_brute = 1 / (proba_over_jeux * (1 + marge))
@@ -531,11 +480,9 @@ def _analyser_tennis(data, match):
         proba_ou = proba_under_jeux
         cote_ou = cote_under_jeux
 
-    # --- Cotes finales ---
     cote_ml_f = float(match.get("cote_ah") or (1 / (proba_ml * (1 + marge))))
     cote_score_f = float(match.get("cote_btts") or (1 / (proba_2_0 * (1 + marge))))
 
-    # --- Stockage ---
     data["volume"] = volume
     data["liquidite_ok"] = volume >= 50000
     data["lambda_home"] = round(p_set, 4)
