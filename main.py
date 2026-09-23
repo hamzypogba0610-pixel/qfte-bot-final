@@ -43,6 +43,10 @@ async def analyser(
     cote_over25: float = Form(...),
     cote_btts: float = Form(...),
     volume: int = Form(...),
+    matchs_7j_j1: int = Form(0),
+    matchs_7j_j2: int = Form(0),
+    matchs_14j_j1: int = Form(0),
+    matchs_14j_j2: int = Form(0),
 ):
     match = {
         "sport": sport,
@@ -67,6 +71,10 @@ async def analyser(
         "forme_ext_glob_5": forme_ext_glob_5,
         "scores_ext_glob_5": scores_ext_glob_5,
         "h2h_5": h2h_5,
+        "matchs_7j_j1": matchs_7j_j1,
+        "matchs_7j_j2": matchs_7j_j2,
+        "matchs_14j_j1": matchs_14j_j1,
+        "matchs_14j_j2": matchs_14j_j2,
     }
 
     resultat = analyser_match(match)
@@ -101,6 +109,8 @@ async def analyser(
             "tennis_config": resultat.get("tennis_config", {}),
             "elo_info": resultat.get("elo_info", {}),
             "blend_info": resultat.get("blend_info", {}),
+            "momentum_info": resultat.get("momentum_info", {}),
+            "fatigue_info": resultat.get("fatigue_info", {}),
         },
     )
 
