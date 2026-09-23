@@ -3,6 +3,7 @@ import importlib
 _collect = importlib.import_module("qfte_engine.01_collect")
 _normalize = importlib.import_module("qfte_engine.02_normalize")
 _context = importlib.import_module("qfte_engine.13_context")
+_calendrier = importlib.import_module("qfte_engine.19_calendrier_foot")
 _market = importlib.import_module("qfte_engine.03_market")
 _sport = importlib.import_module("qfte_engine.04_sport")
 _validation = importlib.import_module("qfte_engine.12_validation")
@@ -22,11 +23,12 @@ def analyser_match(match):
     data = _collect.collecter_donnees(match)
     data = _normalize.normaliser_donnees(data)
     data = _context.analyser_contexte(data)
+    data = _calendrier.analyser_calendrier(data)      # 📅 Calendrier football
     data = _market.analyser_marche(data)
     data = _sport.analyser_sport(data)
     data = _validation.valider_coherence(data)
     data = _calibration.calibrer_probabilites(data)
-    data = _copula.appliquer_copule(data)             # ✨ Copula Calibration
+    data = _copula.appliquer_copule(data)
     data = _scores.predire_scores(data)
     data = _value.detecter_value(data)
     data = _risk.gerer_risques(data)
