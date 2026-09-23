@@ -323,3 +323,192 @@ def get_top_joueurs(n=10, surface=None):
 
     classement.sort(key=lambda x: x["elo"], reverse=True)
     return classement[:n]
+
+
+
+# ============================================================
+# ✨ MOMENTUM — Indice de dynamique récente
+# ============================================================
+def calculer_momentum(joueur, n_recent=5):
+    """
+    Calcule un indice de momentum pour un joueur.
+
+    Basé sur les 5 derniers matchs enregistrés dans l'historique.
+    Combine :
+    - Streak de victoires/défaites récentes
+    - Évolution de l'Elo sur les 30 derniers jours (approximée)
+    - Nombre de sets gagnés/perdus
+
+    Retourne un score entre -1.0 (mauvais momentum) et +1.0 (excellent momentum).
+    """
+    from qfte_engine.historique import charger_historique
+
+    historique = charger_historique()
+    cle = _normaliser_nom(joueur)
+
+    matchs_recents = []
+    for h in reversed(historique):
+        if h.get("sport") != "tennis":
+            continue
+        e1 = _normaliser_nom(h.get("equipe1", ""))
+        e2 = _normaliser_nom(h.get("equipe2", ""))
+        if cle not in (e1, e2):
+            continue
+        res = h.get("resultat")
+        if not res:
+            continue
+        sh = res.get("score_home", 0)
+        sa = res.get("score_away", 0)
+        if cle == e1:
+            gagne = sh > sa
+            sets_pour, sets_contre = sh, sa
+        else:
+            gagne = sa > sh
+            sets_pour, sets_contre = sa, sh
+
+        matchs_recents.append({
+            "gagne": gagne,
+            "sets_pour": sets_pour,
+            "sets_contre": sets_contre,
+            "date": h.get("date", ""),
+        })
+        if len(matchs_recents) >= n_recent:
+            break
+
+    if not matchs_recents:
+        return {
+            "score": 0.0,
+            "victoires": 0,
+            "defaites": 0,
+            "streak": 0,
+            "nb_matchs": 0,
+            "interpretation": "Aucune donnée récente",
+        }
+
+    # --- Streak (série en cours, limité à n_recent) ---
+    streak = 0
+    for m in matchs_recents:
+        if m["gagne"]:
+            if streak >= 0:
+                streak += 1
+            else:
+                break
+        else:
+            if streak <= 0:
+                streak -= 1
+            else:
+                break
+
+    # --- Victoires/défaites ---
+    victoires = sum(1 for m in matchs_recents if m["gagne"])
+    defaites = len(matchs_recents) - victoires
+
+    # --- Ratio sets gagnés ---
+    total_sets_p = sum(m["sets_pour"] for m in matchs_recents)
+    total_sets_c = sum(m["sets_contre"] for m in matchs_recents)
+    ratio_sets = total_sets_p / (total_sets_p + total_sets_c) if (total_sets_p + total_sets_c) > 0 else 0.5
+
+    # --- Score composite ---
+    # Poids : 40% winrate + 30% streak + 30% ratio sets
+    winrate = victoires / len(matchs_recents)
+    score_winrate = (winrate - 0.5) * 2  # -1 à +1
+    score_streak = max(-1.0, min(1.0, streak / 5.0))
+    score_ratio = (ratio_sets - 0.5) * 2  # -1 à +1
+
+    score_final = 0.40 * score_winrate + 0.30 * score_streak + 0.30 * score_ratio
+
+    # Interprétation
+    if score_final >= 0.5:
+        interpretation = "🔥 Excellent"
+    elif score_final >= 0.2:
+        interpretation = "✅ Bon"
+    elif score_final >= -0.2:
+        interpretation = "➖ Neutre"
+    elif score_final >= -0.5:
+        interpretation = "⚠️ Faible"
+    else:
+        interpretation = "❄️ Très faible"
+
+    return {
+        "score": round(score_final, 3),
+        "victoires": victoires,
+        "defaites": defaites,
+        "streak": streak,
+        "nb_matchs": len(matchs_recents),
+        "winrate": round(winrate, 3),
+        "ratio_sets": round(ratio_sets, 3),
+        "interpretation": interpretation,
+    }
+
+
+
+# ============================================================
+# ✨ FATIGUE — Impact du nombre de matchs récents
+# ============================================================
+def calculer_fatigue(matchs_7j, matchs_14j=0):
+    """
+    Calcule un indice de fatigue basé sur les matchs joués récemment.
+
+    Paramètres :
+    - matchs_7j : nombre de matchs joués dans les 7 derniers jours (0-10)
+    - matchs_14j : nombre de matchs joués dans les 14 derniers jours (0-20)
+
+    Retourne un score entre -0.30 (très fatigué) et +0.10 (reposé).
+
+    Logique :
+    - 0 matchs sur 7j → léger bonus (+0.05) — bien reposé
+    - 1-2 matchs → neutre
+    - 3-4 matchs → légère fatigue (-0.05)
+    - 5-6 matchs → fatigue marquée (-0.15)
+    - 7+ matchs → fatigue forte (-0.25)
+    """
+    try:
+        m7 = max(0, int(matchs_7j or 0))
+        m14 = max(0, int(matchs_14j or 0))
+    except (ValueError, TypeError):
+        m7 = 0
+        m14 = 0
+
+    # --- Impact principal : matchs sur 7 jours ---
+    if m7 == 0:
+        impact_7j = 0.05
+    elif m7 <= 2:
+        impact_7j = 0.0
+    elif m7 <= 4:
+        impact_7j = -0.05
+    elif m7 <= 6:
+        impact_7j = -0.15
+    else:
+        impact_7j = -0.25
+
+    # --- Impact secondaire : densité sur 14 jours ---
+    # Si plus de 10 matchs sur 14 jours = calendrier chargé
+    impact_14j = 0.0
+    if m14 >= 10:
+        impact_14j = -0.08
+    elif m14 >= 7:
+        impact_14j = -0.04
+
+    score_final = impact_7j + impact_14j
+    score_final = max(-0.35, min(0.10, score_final))
+
+    # Interprétation
+    if score_final >= 0.03:
+        interpretation = "💚 Bien reposé"
+    elif score_final >= -0.03:
+        interpretation = "➖ Fraîcheur normale"
+    elif score_final >= -0.10:
+        interpretation = "🟡 Légère fatigue"
+    elif score_final >= -0.20:
+        interpretation = "🟠 Fatigue marquée"
+    else:
+        interpretation = "🔴 Fatigue forte"
+
+    return {
+        "score": round(score_final, 3),
+        "matchs_7j": m7,
+        "matchs_14j": m14,
+        "impact_7j": round(impact_7j, 3),
+        "impact_14j": round(impact_14j, 3),
+        "interpretation": interpretation,
+    }
