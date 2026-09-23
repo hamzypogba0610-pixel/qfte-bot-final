@@ -16,6 +16,8 @@
         .aide { color: #9ca3af; font-size: 12px; margin-top: 2px; font-weight: normal; }
         .row { display: flex; gap: 8px; }
         .row > div { flex: 1; }
+        .bloc-calendrier { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #3b82f6; }
+        .bloc-calendrier h3 { color: #3b82f6; margin-top: 0; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -66,6 +68,55 @@
 
             <label>Matchs joués sur les 14 derniers jours — Joueur 2</label>
             <input type="number" name="matchs_14j_j2" value="0" min="0" max="20">
+        </div>
+
+        <div id="bloc_calendrier" style="display: none;">
+            <h2>📅 Calendrier (football uniquement)</h2>
+            <div class="aide" style="margin-bottom: 10px;">
+                Impacte la fatigue et la rotation probable des effectifs.
+            </div>
+
+            <div class="bloc-calendrier">
+                <h3>🏠 Équipe 1 (domicile) — {{ 'Liverpool' if False }}</h3>
+
+                <label>Matchs joués sur les 7 derniers jours</label>
+                <input type="number" name="matchs_7j_dom" value="0" min="0" max="5">
+                <div class="aide">0 = pas de match / 3 = semaine chargée</div>
+
+                <label>Matchs joués sur les 14 derniers jours</label>
+                <input type="number" name="matchs_14j_dom" value="0" min="0" max="10">
+
+                <label>Jours de repos avant ce match</label>
+                <input type="number" name="jours_repos_dom" value="7" min="0" max="30">
+                <div class="aide">7+ = bien reposé / 2-3 = juste après un match</div>
+
+                <label>Compétition du match suivant (optionnel)</label>
+                <input type="text" name="competition_suivante_dom" placeholder="Ex: Champions League, Coupe de France">
+                <div class="aide">Laisse vide si aucun match important à venir</div>
+
+                <label>Jours avant le match suivant</label>
+                <input type="number" name="jours_avant_suivant_dom" value="7" min="0" max="30">
+                <div class="aide">2-4 jours = rotation probable</div>
+            </div>
+
+            <div class="bloc-calendrier">
+                <h3>✈️ Équipe 2 (extérieur)</h3>
+
+                <label>Matchs joués sur les 7 derniers jours</label>
+                <input type="number" name="matchs_7j_ext" value="0" min="0" max="5">
+
+                <label>Matchs joués sur les 14 derniers jours</label>
+                <input type="number" name="matchs_14j_ext" value="0" min="0" max="10">
+
+                <label>Jours de repos avant ce match</label>
+                <input type="number" name="jours_repos_ext" value="7" min="0" max="30">
+
+                <label>Compétition du match suivant (optionnel)</label>
+                <input type="text" name="competition_suivante_ext" placeholder="Ex: Champions League, Coupe de France">
+
+                <label>Jours avant le match suivant</label>
+                <input type="number" name="jours_avant_suivant_ext" value="7" min="0" max="30">
+            </div>
         </div>
 
         <h2>📊 Cotes 1X2 (les 2 équipes)</h2>
@@ -128,12 +179,14 @@
         <input type="number" name="volume" value="50000" required>
 
         <button type="submit">Analyser</button>
-    </form>
+                                                      </form>
 
+    
     <script>
         const selectSport = document.getElementById("select_sport");
         const blocSurface = document.getElementById("bloc_surface");
         const blocFatigue = document.getElementById("bloc_fatigue");
+        const blocCalendrier = document.getElementById("bloc_calendrier");
 
         function majLabels() {
             const sport = selectSport.value;
@@ -160,6 +213,7 @@
             if (sport === "tennis") {
                 blocSurface.style.display = "block";
                 blocFatigue.style.display = "block";
+                blocCalendrier.style.display = "none";
                 eq1.textContent = "Joueur 1";
                 eq2.textContent = "Joueur 2";
                 c1.textContent = "Cote Joueur 1 — Ouverture / Fermeture";
@@ -182,6 +236,7 @@
             } else if (sport === "basket") {
                 blocSurface.style.display = "none";
                 blocFatigue.style.display = "none";
+                blocCalendrier.style.display = "none";
                 eq1.textContent = "Équipe 1 (à domicile)";
                 eq2.textContent = "Équipe 2 (à l'extérieur)";
                 c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
@@ -204,6 +259,7 @@
             } else {
                 blocSurface.style.display = "none";
                 blocFatigue.style.display = "none";
+                blocCalendrier.style.display = "block";
                 eq1.textContent = "Équipe 1 (à domicile)";
                 eq2.textContent = "Équipe 2 (à l'extérieur)";
                 c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
