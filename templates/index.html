@@ -51,6 +51,23 @@
         <label id="label_equipe2">Équipe 2 (à l'extérieur)</label>
         <input type="text" name="equipe2" required>
 
+        <div id="bloc_fatigue" style="display: none;">
+            <h2>💪 Fatigue (tennis uniquement)</h2>
+
+            <label>Matchs joués sur les 7 derniers jours — Joueur 1</label>
+            <input type="number" name="matchs_7j_j1" value="0" min="0" max="10">
+            <div class="aide">0 = bien reposé / 5+ = tournoi en cours intense</div>
+
+            <label>Matchs joués sur les 7 derniers jours — Joueur 2</label>
+            <input type="number" name="matchs_7j_j2" value="0" min="0" max="10">
+
+            <label>Matchs joués sur les 14 derniers jours — Joueur 1</label>
+            <input type="number" name="matchs_14j_j1" value="0" min="0" max="20">
+
+            <label>Matchs joués sur les 14 derniers jours — Joueur 2</label>
+            <input type="number" name="matchs_14j_j2" value="0" min="0" max="20">
+        </div>
+
         <h2>📊 Cotes 1X2 (les 2 équipes)</h2>
         <label id="label_cote_ouv1">Cote Équipe 1 — Ouverture / Fermeture</label>
         <div class="row">
@@ -116,6 +133,7 @@
     <script>
         const selectSport = document.getElementById("select_sport");
         const blocSurface = document.getElementById("bloc_surface");
+        const blocFatigue = document.getElementById("bloc_fatigue");
 
         function majLabels() {
             const sport = selectSport.value;
@@ -141,6 +159,7 @@
 
             if (sport === "tennis") {
                 blocSurface.style.display = "block";
+                blocFatigue.style.display = "block";
                 eq1.textContent = "Joueur 1";
                 eq2.textContent = "Joueur 2";
                 c1.textContent = "Cote Joueur 1 — Ouverture / Fermeture";
@@ -162,6 +181,7 @@
                 aideSd.textContent = "Format : sets_pour-sets_contre (ex: 2-0, 2-1, 0-2)";
             } else if (sport === "basket") {
                 blocSurface.style.display = "none";
+                blocFatigue.style.display = "none";
                 eq1.textContent = "Équipe 1 (à domicile)";
                 eq2.textContent = "Équipe 2 (à l'extérieur)";
                 c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
@@ -183,6 +203,7 @@
                 aideSd.textContent = "Format : points_pour-points_contre (ex: 108-102)";
             } else {
                 blocSurface.style.display = "none";
+                blocFatigue.style.display = "none";
                 eq1.textContent = "Équipe 1 (à domicile)";
                 eq2.textContent = "Équipe 2 (à l'extérieur)";
                 c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
@@ -209,4 +230,4 @@
         majLabels();
     </script>
 </body>
-            </html>
+</html>
