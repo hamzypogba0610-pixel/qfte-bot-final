@@ -68,6 +68,10 @@
         .tennis-title { color: #fb923c; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
         .elo-box { background: linear-gradient(135deg, #0a0a1a, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #818cf8; }
         .elo-title { color: #818cf8; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
+        .momentum-box { background: linear-gradient(135deg, #1a0a14, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ec4899; }
+        .momentum-title { color: #ec4899; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
+        .fatigue-box { background: linear-gradient(135deg, #14141a, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f97316; }
+        .fatigue-title { color: #f97316; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
         .signature-box { margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #0a0a0a, #141414); border-radius: 12px; border: 2px solid #2a2a2a; text-align: center; }
         .sig-diamant { border-color: #a78bfa; box-shadow: 0 0 20px rgba(167,139,250,0.3); }
         .sig-or { border-color: #facc15; box-shadow: 0 0 15px rgba(250,204,21,0.25); }
@@ -245,6 +249,58 @@
     </div>
     {% endif %}
 
+    {% if momentum_info %}
+    <div class="momentum-box">
+        <div class="momentum-title">✨ Momentum (5 derniers matchs)</div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe1 }} — score</span>
+            <span class="ctx-val {% if momentum_info.j1.score < 0 %}neg{% elif momentum_info.j1.score < 0.2 %}neutre{% endif %}">{{ momentum_info.j1.score }} ({{ momentum_info.j1.interpretation }})</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe1 }} — V/D</span>
+            <span class="ctx-val">{{ momentum_info.j1.victoires }}V / {{ momentum_info.j1.defaites }}D (streak {{ momentum_info.j1.streak }})</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe2 }} — score</span>
+            <span class="ctx-val {% if momentum_info.j2.score < 0 %}neg{% elif momentum_info.j2.score < 0.2 %}neutre{% endif %}">{{ momentum_info.j2.score }} ({{ momentum_info.j2.interpretation }})</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe2 }} — V/D</span>
+            <span class="ctx-val">{{ momentum_info.j2.victoires }}V / {{ momentum_info.j2.defaites }}D (streak {{ momentum_info.j2.streak }})</span>
+        </div>
+        <div class="ctx-row" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
+            <span class="label">Différentiel (impact proba)</span>
+            <span class="ctx-val {% if momentum_info.diff < 0 %}neg{% endif %}">{{ momentum_info.diff }} → {{ (momentum_info.impact_proba * 100) | round(2) }}%</span>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if fatigue_info %}
+    <div class="fatigue-box">
+        <div class="fatigue-title">💪 Fatigue (matchs récents)</div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe1 }} — 7j / 14j</span>
+            <span class="ctx-val">{{ fatigue_info.j1.matchs_7j }} / {{ fatigue_info.j1.matchs_14j }} matchs</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe1 }} — indice</span>
+            <span class="ctx-val {% if fatigue_info.j1.score < -0.10 %}neg{% elif fatigue_info.j1.score < 0 %}neutre{% endif %}">{{ fatigue_info.j1.score }} ({{ fatigue_info.j1.interpretation }})</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe2 }} — 7j / 14j</span>
+            <span class="ctx-val">{{ fatigue_info.j2.matchs_7j }} / {{ fatigue_info.j2.matchs_14j }} matchs</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe2 }} — indice</span>
+            <span class="ctx-val {% if fatigue_info.j2.score < -0.10 %}neg{% elif fatigue_info.j2.score < 0 %}neutre{% endif %}">{{ fatigue_info.j2.score }} ({{ fatigue_info.j2.interpretation }})</span>
+        </div>
+        <div class="ctx-row" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
+            <span class="label">Différentiel (impact proba)</span>
+            <span class="ctx-val {% if fatigue_info.diff < 0 %}neg{% endif %}">{{ fatigue_info.diff }} → {{ (fatigue_info.impact_proba * 100) | round(2) }}%</span>
+        </div>
+    </div>
+    {% endif %}
+
     {% if contexte %}
     <div class="match">
         <h2>🧠 Analyse contextuelle</h2>
@@ -270,40 +326,42 @@
         <div class="ctx-row">
             <span class="label">{{ match.equipe2 }} — encaisse à l'extérieur</span>
             <span class="ctx-val">{{ contexte.scores.ext_encaisses }}</span>
-        </div>
-        {% endif %}
-
-        <h3>📈 Forme</h3>
-        <div class="ctx-row">
-            <span class="label">Forme {{ match.equipe1 }} (dom. finale)</span>
-            <span class="ctx-val {% if contexte.forme.dom_finale < 0 %}neg{% elif contexte.forme.dom_finale == 0 %}neutre{% endif %}">{{ contexte.forme.dom_finale }}</span>
-        </div>
-        <div class="ctx-row">
-            <span class="label">Forme {{ match.equipe2 }} (ext. finale)</span>
-            <span class="ctx-val {% if contexte.forme.ext_finale < 0 %}neg{% elif contexte.forme.ext_finale == 0 %}neutre{% endif %}">{{ contexte.forme.ext_finale }}</span>
-        </div>
-
-        {% if contexte.h2h and contexte.h2h.n > 0 %}
-        <h3>⚔️ Confrontations directes ({{ contexte.h2h.n }} matchs)</h3>
-        <div class="ctx-row"><span class="label">Moyenne {{ 'points' if match.sport == 'basket' else ('jeux' if match.sport == 'tennis' else 'buts') }} H2H</span><span class="ctx-val">{{ contexte.h2h.moy_buts }}</span></div>
-        <div class="ctx-row"><span class="label">Victoires {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.h2h.v_dom }}</span></div>
-        <div class="ctx-row"><span class="label">Nuls</span><span class="ctx-val neutre">{{ contexte.h2h.nuls }}</span></div>
-        <div class="ctx-row"><span class="label">Victoires {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.h2h.v_ext }}</span></div>
-        <div class="ctx-row"><span class="label">Domination</span><span class="ctx-val">{{ contexte.h2h.domine }}</span></div>
-        {% endif %}
-
-        {% if contexte.cotes and contexte.cotes.overround %}
-        <h3>💹 Cotes des 2 équipes</h3>
-        <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_1 }}</span></div>
-        <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_2 }}</span></div>
-        <div class="ctx-row"><span class="label">Proba implicite Nul</span><span class="ctx-val neutre">{{ contexte.cotes.proba_implicite_nul }}</span></div>
-        <div class="ctx-row"><span class="label">Marge bookmaker (2 issues)</span><span class="ctx-val">{{ contexte.cotes.marge_book }}%</span></div>
-        <div class="ctx-row"><span class="label">Mouvement {{ match.equipe1 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_1 * 100) | round(2) }}%</span></div>
-        <div class="ctx-row"><span class="label">Mouvement {{ match.equipe2 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_2 * 100) | round(2) }}%</span></div>
-        <div class="ctx-row"><span class="label">Signal sharp détecté</span><span class="ctx-val">{{ contexte.cotes.sharp_signal }}</span></div>
-        {% endif %}
     </div>
+
+        
     {% endif %}
+
+    <h3>📈 Forme</h3>
+    <div class="ctx-row">
+        <span class="label">Forme {{ match.equipe1 }} (dom. finale)</span>
+        <span class="ctx-val {% if contexte.forme.dom_finale < 0 %}neg{% elif contexte.forme.dom_finale == 0 %}neutre{% endif %}">{{ contexte.forme.dom_finale }}</span>
+    </div>
+    <div class="ctx-row">
+        <span class="label">Forme {{ match.equipe2 }} (ext. finale)</span>
+        <span class="ctx-val {% if contexte.forme.ext_finale < 0 %}neg{% elif contexte.forme.ext_finale == 0 %}neutre{% endif %}">{{ contexte.forme.ext_finale }}</span>
+    </div>
+
+    {% if contexte.h2h and contexte.h2h.n > 0 %}
+    <h3>⚔️ Confrontations directes ({{ contexte.h2h.n }} matchs)</h3>
+    <div class="ctx-row"><span class="label">Moyenne {{ 'points' if match.sport == 'basket' else ('jeux' if match.sport == 'tennis' else 'buts') }} H2H</span><span class="ctx-val">{{ contexte.h2h.moy_buts }}</span></div>
+    <div class="ctx-row"><span class="label">Victoires {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.h2h.v_dom }}</span></div>
+    <div class="ctx-row"><span class="label">Nuls</span><span class="ctx-val neutre">{{ contexte.h2h.nuls }}</span></div>
+    <div class="ctx-row"><span class="label">Victoires {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.h2h.v_ext }}</span></div>
+    <div class="ctx-row"><span class="label">Domination</span><span class="ctx-val">{{ contexte.h2h.domine }}</span></div>
+    {% endif %}
+
+    {% if contexte.cotes and contexte.cotes.overround %}
+    <h3>💹 Cotes des 2 équipes</h3>
+    <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_1 }}</span></div>
+    <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_2 }}</span></div>
+    <div class="ctx-row"><span class="label">Proba implicite Nul</span><span class="ctx-val neutre">{{ contexte.cotes.proba_implicite_nul }}</span></div>
+    <div class="ctx-row"><span class="label">Marge bookmaker (2 issues)</span><span class="ctx-val">{{ contexte.cotes.marge_book }}%</span></div>
+    <div class="ctx-row"><span class="label">Mouvement {{ match.equipe1 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_1 * 100) | round(2) }}%</span></div>
+    <div class="ctx-row"><span class="label">Mouvement {{ match.equipe2 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_2 * 100) | round(2) }}%</span></div>
+    <div class="ctx-row"><span class="label">Signal sharp détecté</span><span class="ctx-val">{{ contexte.cotes.sharp_signal }}</span></div>
+    {% endif %}
+</div>
+{% endif %}
 
     
     <div class="match">
@@ -540,4 +598,4 @@
     <a href="/" class="back">← Nouvelle analyse</a>
     <a href="/dashboard" class="back back-alt">📊 Dashboard</a>
 </body>
-            </html>
+</html>
