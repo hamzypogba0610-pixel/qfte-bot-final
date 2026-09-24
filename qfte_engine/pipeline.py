@@ -19,6 +19,7 @@ _output = importlib.import_module("qfte_engine.10_output")
 _monitor = importlib.import_module("qfte_engine.11_monitor")
 _partenariat = importlib.import_module("qfte_engine.15_partenariat")
 _amplificateur = importlib.import_module("qfte_engine.16_amplificateur")
+_aura = importlib.import_module("qfte_engine.22_aura")
 
 
 def analyser_match(match):
@@ -28,7 +29,7 @@ def analyser_match(match):
     data = _calendrier.analyser_calendrier(data)
     data = _calendrier_basket.analyser_calendrier_basket(data)
     data = _market.analyser_marche(data)
-    data = _stats_avancees.calculer_stats_avancees(data)      # 📊 Stats avancées
+    data = _stats_avancees.calculer_stats_avancees(data)
     data = _sport.analyser_sport(data)
     data = _validation.valider_coherence(data)
     data = _calibration.calibrer_probabilites(data)
@@ -40,5 +41,6 @@ def analyser_match(match):
     data = _output.formater_recommandation(data)
     data = _partenariat.apposer_signature(data)
     data = _amplificateur.amplifier(data)
+    data = _aura.calculer_aura(data)                          # ⚡ Couche AURA
     data = _monitor.surveiller(data)
     return data
