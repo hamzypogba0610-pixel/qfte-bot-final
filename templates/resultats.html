@@ -84,6 +84,24 @@
         .stats-row:last-child { border-bottom: none; }
         .stats-label { color: #9ca3af; }
         .stats-val { color: #4ade80; font-weight: bold; }
+        .aura-box { background: linear-gradient(135deg, #0a0a1f, #1a1a1a); padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 2px solid #2a2a2a; }
+        .aura-niveau-exceptionnel { border-color: #a78bfa; box-shadow: 0 0 20px rgba(167,139,250,0.35); }
+        .aura-niveau-fort { border-color: #facc15; box-shadow: 0 0 15px rgba(250,204,21,0.25); }
+        .aura-niveau-modere { border-color: #60a5fa; }
+        .aura-niveau-faible { border-color: #9ca3af; }
+        .aura-niveau-tres-faible { border-color: #6b7280; opacity: 0.85; }
+        .aura-title { color: #a78bfa; font-weight: bold; font-size: 15px; margin-bottom: 10px; letter-spacing: 1.5px; text-align: center; }
+        .aura-score-container { text-align: center; margin-bottom: 12px; }
+        .aura-score { font-size: 38px; font-weight: bold; color: #4ade80; line-height: 1; }
+        .aura-niveau { font-size: 16px; font-weight: bold; letter-spacing: 2px; margin-top: 4px; }
+        .aura-attribution { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 12px; font-size: 12px; }
+        .aura-signal { display: flex; justify-content: space-between; padding: 5px 8px; background: #0a0a0a; border-radius: 4px; }
+        .aura-signal-label { color: #9ca3af; }
+        .aura-signal-val { color: #4ade80; font-weight: bold; font-family: monospace; }
+        .aura-conflit { background: rgba(239,68,68,0.1); border-left: 3px solid #ef4444; padding: 8px 10px; margin-top: 10px; border-radius: 4px; font-size: 12px; color: #fca5a5; }
+        .aura-conflit-titre { color: #ef4444; font-weight: bold; margin-bottom: 4px; }
+        .aura-meta { color: #6b7280; font-size: 11px; margin-top: 12px; text-align: center; }
+        .aura-empreinte { color: #4ade80; font-weight: bold; font-family: monospace; }
         .signature-box { margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #0a0a0a, #141414); border-radius: 12px; border: 2px solid #2a2a2a; text-align: center; }
         .sig-diamant { border-color: #a78bfa; box-shadow: 0 0 20px rgba(167,139,250,0.3); }
         .sig-or { border-color: #facc15; box-shadow: 0 0 15px rgba(250,204,21,0.25); }
@@ -105,7 +123,8 @@
         .signature-full { color: #374151; font-size: 9px; font-family: monospace; word-break: break-all; margin-top: 3px; }
     </style>
 </head>
-<body>
+
+    <body>
     <h1>🦁 Résultats QFTE V23.0</h1>
 
     {% if validation %}
@@ -308,124 +327,122 @@
         </div>
         <div class="ctx-row" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
             <span class="label">Différentiel (impact proba)</span>
-            <span class="ctx-val {% if fatigue_info.diff < 0 %}neg{% endif %}">{{ fatigue_info.diff 
+            <span class="ctx-val {% if fatigue_info.diff < 0 %}neg{% endif %}">{{ fatigue_info.diff }} → {{ (fatigue_info.impact_proba * 100) | round(2) }}%</span>
+        </div>
+    </div>
+    {% endif %}
 
-                        <span class="ctx-val {% if fatigue_info.diff < 0 %}neg{% endif %}">{{ fatigue_info.diff }} → {{ (fatigue_info.impact_proba * 100) | round(2) }}%</span>
-    </div>
-</div>
-{% endif %}
+    {% if calendrier and calendrier.dom %}
+    <div class="calendrier-box">
+        <div class="calendrier-title">📅 Impact Calendrier (football)</div>
 
-{% if calendrier and calendrier.dom %}
-<div class="calendrier-box">
-    <div class="calendrier-title">📅 Impact Calendrier (football)</div>
+        <h3 style="color:#3b82f6;">🏠 {{ match.equipe1 }} (domicile)</h3>
+        <div class="ctx-row">
+            <span class="label">Matchs 7j / 14j</span>
+            <span class="ctx-val">{{ calendrier.dom.details.matchs_7j }} / {{ calendrier.dom.details.matchs_14j }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Jours de repos</span>
+            <span class="ctx-val">{{ calendrier.dom.details.jours_repos }} jours</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Match suivant</span>
+            <span class="ctx-val">{{ calendrier.dom.details.competition_suivante }} (dans {{ calendrier.dom.details.jours_avant_suivant }}j)</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Indice calendrier</span>
+            <span class="ctx-val {% if calendrier.dom.score < -0.15 %}neg{% elif calendrier.dom.score < 0 %}neutre{% endif %}">{{ calendrier.dom.score }} ({{ calendrier.dom.interpretation }})</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Impact sur λ</span>
+            <span class="ctx-val {% if calendrier.dom.impact_lambda < 0 %}neg{% endif %}">{{ calendrier.dom.impact_lambda }} buts</span>
+        </div>
 
-    <h3 style="color:#3b82f6;">🏠 {{ match.equipe1 }} (domicile)</h3>
-    <div class="ctx-row">
-        <span class="label">Matchs 7j / 14j</span>
-        <span class="ctx-val">{{ calendrier.dom.details.matchs_7j }} / {{ calendrier.dom.details.matchs_14j }}</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Jours de repos</span>
-        <span class="ctx-val">{{ calendrier.dom.details.jours_repos }} jours</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Match suivant</span>
-        <span class="ctx-val">{{ calendrier.dom.details.competition_suivante }} (dans {{ calendrier.dom.details.jours_avant_suivant }}j)</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Indice calendrier</span>
-        <span class="ctx-val {% if calendrier.dom.score < -0.15 %}neg{% elif calendrier.dom.score < 0 %}neutre{% endif %}">{{ calendrier.dom.score }} ({{ calendrier.dom.interpretation }})</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Impact sur λ</span>
-        <span class="ctx-val {% if calendrier.dom.impact_lambda < 0 %}neg{% endif %}">{{ calendrier.dom.impact_lambda }} buts</span>
-    </div>
+        <h3 style="color:#3b82f6; margin-top:15px;">✈️ {{ match.equipe2 }} (extérieur)</h3>
+        <div class="ctx-row">
+            <span class="label">Matchs 7j / 14j</span>
+            <span class="ctx-val">{{ calendrier.ext.details.matchs_7j }} / {{ calendrier.ext.details.matchs_14j }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Jours de repos</span>
+            <span class="ctx-val">{{ calendrier.ext.details.jours_repos }} jours</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Match suivant</span>
+            <span class="ctx-val">{{ calendrier.ext.details.competition_suivante }} (dans {{ calendrier.ext.details.jours_avant_suivant }}j)</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Indice calendrier</span>
+            <span class="ctx-val {% if calendrier.ext.score < -0.15 %}neg{% elif calendrier.ext.score < 0 %}neutre{% endif %}">{{ calendrier.ext.score }} ({{ calendrier.ext.interpretation }})</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Impact sur λ</span>
+            <span class="ctx-val {% if calendrier.ext.impact_lambda < 0 %}neg{% endif %}">{{ calendrier.ext.impact_lambda }} buts</span>
+        </div>
 
-    <h3 style="color:#3b82f6; margin-top:15px;">✈️ {{ match.equipe2 }} (extérieur)</h3>
-    <div class="ctx-row">
-        <span class="label">Matchs 7j / 14j</span>
-        <span class="ctx-val">{{ calendrier.ext.details.matchs_7j }} / {{ calendrier.ext.details.matchs_14j }}</span>
+        <div class="ctx-row" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
+            <span class="label">Différentiel net</span>
+            <span class="ctx-val {% if calendrier.difference_lambda < 0 %}neg{% endif %}">{{ calendrier.difference_lambda }} buts</span>
+        </div>
     </div>
-    <div class="ctx-row">
-        <span class="label">Jours de repos</span>
-        <span class="ctx-val">{{ calendrier.ext.details.jours_repos }} jours</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Match suivant</span>
-        <span class="ctx-val">{{ calendrier.ext.details.competition_suivante }} (dans {{ calendrier.ext.details.jours_avant_suivant }}j)</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Indice calendrier</span>
-        <span class="ctx-val {% if calendrier.ext.score < -0.15 %}neg{% elif calendrier.ext.score < 0 %}neutre{% endif %}">{{ calendrier.ext.score }} ({{ calendrier.ext.interpretation }})</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Impact sur λ</span>
-        <span class="ctx-val {% if calendrier.ext.impact_lambda < 0 %}neg{% endif %}">{{ calendrier.ext.impact_lambda }} buts</span>
-    </div>
+    {% endif %}
 
-    <div class="ctx-row" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
-        <span class="label">Différentiel net</span>
-        <span class="ctx-val {% if calendrier.difference_lambda < 0 %}neg{% endif %}">{{ calendrier.difference_lambda }} buts</span>
-    </div>
-</div>
-{% endif %}
+    {% if calendrier_basket and calendrier_basket.dom %}
+    <div class="calendrier-basket-box">
+        <div class="calendrier-basket-title">🏀 Impact Calendrier (basket)</div>
 
-    
-{% if calendrier_basket and calendrier_basket.dom %}
-<div class="calendrier-basket-box">
-    <div class="calendrier-basket-title">🏀 Impact Calendrier (basket)</div>
+        <h3 style="color:#a3e635;">🏠 {{ match.equipe1 }} (domicile)</h3>
+        <div class="ctx-row">
+            <span class="label">Jours de repos</span>
+            <span class="ctx-val">{{ calendrier_basket.dom.details.jours_repos }} jours</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Matchs sur 4j</span>
+            <span class="ctx-val">{{ calendrier_basket.dom.details.matchs_4j }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Back-to-back</span>
+            <span class="ctx-val {% if calendrier_basket.dom.details.back_to_back %}neg{% endif %}">{{ "Oui" if calendrier_basket.dom.details.back_to_back else "Non" }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Voyage long</span>
+            <span class="ctx-val {% if calendrier_basket.dom.details.deplacement_long %}neg{% endif %}">{{ "Oui" if calendrier_basket.dom.details.deplacement_long else "Non" }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Indice calendrier</span>
+            <span class="ctx-val {% if calendrier_basket.dom.score_points < -2 %}neg{% elif calendrier_basket.dom.score_points < 0 %}neutre{% endif %}">{{ calendrier_basket.dom.score_points }} pts ({{ calendrier_basket.dom.interpretation }})</span>
+        </div>
 
-    <h3 style="color:#a3e635;">🏠 {{ match.equipe1 }} (domicile)</h3>
-    <div class="ctx-row">
-        <span class="label">Jours de repos</span>
-        <span class="ctx-val">{{ calendrier_basket.dom.details.jours_repos }} jours</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Matchs sur 4j</span>
-        <span class="ctx-val">{{ calendrier_basket.dom.details.matchs_4j }}</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Back-to-back</span>
-        <span class="ctx-val {% if calendrier_basket.dom.details.back_to_back %}neg{% endif %}">{{ "Oui" if calendrier_basket.dom.details.back_to_back else "Non" }}</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Voyage long</span>
-        <span class="ctx-val {% if calendrier_basket.dom.details.deplacement_long %}neg{% endif %}">{{ "Oui" if calendrier_basket.dom.details.deplacement_long else "Non" }}</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Indice calendrier</span>
-        <span class="ctx-val {% if calendrier_basket.dom.score_points < -2 %}neg{% elif calendrier_basket.dom.score_points < 0 %}neutre{% endif %}">{{ calendrier_basket.dom.score_points }} pts ({{ calendrier_basket.dom.interpretation }})</span>
-    </div>
+        <h3 style="color:#a3e635; margin-top:15px;">✈️ {{ match.equipe2 }} (extérieur)</h3>
+        <div class="ctx-row">
+            <span class="label">Jours de repos</span>
+            <span class="ctx-val">{{ calendrier_basket.ext.details.jours_repos }} jours</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Matchs sur 4j</span>
+            <span class="ctx-val">{{ calendrier_basket.ext.details.matchs_4j }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Back-to-back</span>
+            <span class="ctx-val {% if calendrier_basket.ext.details.back_to_back %}neg{% endif %}">{{ "Oui" if calendrier_basket.ext.details.back_to_back else "Non" }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Voyage long</span>
+            <span class="ctx-val {% if calendrier_basket.ext.details.deplacement_long %}neg{% endif %}">{{ "Oui" if calendrier_basket.ext.details.deplacement_long else "Non" }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Indice calendrier</span>
+            <span class="ctx-val {% if calendrier_basket.ext.score_points < -2 %}neg{% elif calendrier_basket.ext.score_points < 0 %}neutre{% endif %}">{{ calendrier_basket.ext.score_points }} pts ({{ calendrier_basket.ext.interpretation }})</span>
+        </div>
 
-    <h3 style="color:#a3e635; margin-top:15px;">✈️ {{ match.equipe2 }} (extérieur)</h3>
-    <div class="ctx-row">
-        <span class="label">Jours de repos</span>
-        <span class="ctx-val">{{ calendrier_basket.ext.details.jours_repos }} jours</span>
+        <div class="ctx-row" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
+            <span class="label">Différentiel net (écart)</span>
+            <span class="ctx-val {% if calendrier_basket.difference_points < 0 %}neg{% endif %}">{{ calendrier_basket.difference_points }} pts</span>
+        </div>
     </div>
-    <div class="ctx-row">
-        <span class="label">Matchs sur 4j</span>
-        <span class="ctx-val">{{ calendrier_basket.ext.details.matchs_4j }}</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Back-to-back</span>
-        <span class="ctx-val {% if calendrier_basket.ext.details.back_to_back %}neg{% endif %}">{{ "Oui" if calendrier_basket.ext.details.back_to_back else "Non" }}</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Voyage long</span>
-        <span class="ctx-val {% if calendrier_basket.ext.details.deplacement_long %}neg{% endif %}">{{ "Oui" if calendrier_basket.ext.details.deplacement_long else "Non" }}</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Indice calendrier</span>
-        <span class="ctx-val {% if calendrier_basket.ext.score_points < -2 %}neg{% elif calendrier_basket.ext.score_points < 0 %}neutre{% endif %}">{{ calendrier_basket.ext.score_points }} pts ({{ calendrier_basket.ext.interpretation }})</span>
-    </div>
+    {% endif %}
 
-    <div class="ctx-row" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
-        <span class="label">Différentiel net (écart)</span>
-        <span class="ctx-val {% if calendrier_basket.difference_points < 0 %}neg{% endif %}">{{ calendrier_basket.difference_points }} pts</span>
-    </div>
-</div>
-{% endif %}
-
+        
 {% if stats_avancees %}
 <div class="stats-box">
     <div class="stats-title">📊 Statistiques Avancées</div>
@@ -495,211 +512,256 @@
 </div>
 {% endif %}
 
-    
-    {% if contexte %}
-    <div class="match">
-        <h2>🧠 Analyse contextuelle</h2>
+{% if aura %}
+<div class="aura-box aura-niveau-{{ aura.niveau|lower|replace(' ', '-') }}">
+    <div class="aura-title">⚡ COUCHE AURA — Analyse Universelle de Robustesse</div>
 
-        {% if contexte.scores and contexte.scores.dom_marques is not none %}
-        <h3>
-            {% if match.sport == 'basket' %}🏀 Moyennes de points (scores réels)
-            {% elif match.sport == 'tennis' %}🎾 Moyennes de jeux (scores réels)
-            {% else %}⚽ Moyennes de buts (scores réels){% endif %}
-        </h3>
-        <div class="ctx-row">
-            <span class="label">{{ match.equipe1 }} — marque à domicile</span>
-            <span class="ctx-val">{{ contexte.scores.dom_marques }}</span>
-        </div>
-        <div class="ctx-row">
-            <span class="label">{{ match.equipe1 }} — encaisse à domicile</span>
-            <span class="ctx-val">{{ contexte.scores.dom_encaisses }}</span>
-        </div>
-        <div class="ctx-row">
-            <span class="label">{{ match.equipe2 }} — marque à l'extérieur</span>
-            <span class="ctx-val">{{ contexte.scores.ext_marques }}</span>
-        </div>
-        <div class="ctx-row">
-            <span class="label">{{ match.equipe2 }} — encaisse à l'extérieur</span>
-            <span class="ctx-val">{{ contexte.scores.ext_encaisses }}</span>
-        </div>
-        {% endif %}
+    <div class="aura-score-container">
+        <div class="aura-score">{{ aura.score }} / 100</div>
+        <div class="aura-niveau" style="color: {{ aura.couleur }};">{{ aura.emoji }} {{ aura.niveau }}</div>
+    </div>
 
-        <h3>📈 Forme</h3>
-        <div class="ctx-row">
-            <span class="label">Forme {{ match.equipe1 }} (dom. finale)</span>
-            <span class="ctx-val {% if contexte.forme.dom_finale < 0 %}neg{% elif contexte.forme.dom_finale == 0 %}neutre{% endif %}">{{ contexte.forme.dom_finale }}</span>
+    <div class="aura-attribution">
+        <div class="aura-signal">
+            <span class="aura-signal-label">🎯 Contexte ({{ (aura.poids_sport.A * 100) | round(0) }}%)</span>
+            <span class="aura-signal-val">{{ aura.signaux.A }} · +{{ aura.attribution.A }}</span>
         </div>
-        <div class="ctx-row">
-            <span class="label">Forme {{ match.equipe2 }} (ext. finale)</span>
-            <span class="ctx-val {% if contexte.forme.ext_finale < 0 %}neg{% elif contexte.forme.ext_finale == 0 %}neutre{% endif %}">{{ contexte.forme.ext_finale }}</span>
+        <div class="aura-signal">
+            <span class="aura-signal-label">📋 Qualité ({{ (aura.poids_sport.U * 100) | round(0) }}%)</span>
+            <span class="aura-signal-val">{{ aura.signaux.U }} · +{{ aura.attribution.U }}</span>
         </div>
+        <div class="aura-signal">
+            <span class="aura-signal-label">🧬 Robustesse ({{ (aura.poids_sport.R * 100) | round(0) }}%)</span>
+            <span class="aura-signal-val">{{ aura.signaux.R }} · +{{ aura.attribution.R }}</span>
+        </div>
+        <div class="aura-signal">
+            <span class="aura-signal-label">⚡ Amplification ({{ (aura.poids_sport.AMP * 100) | round(0) }}%)</span>
+            <span class="aura-signal-val">{{ aura.signaux.AMP }} · +{{ aura.attribution.AMP }}</span>
+        </div>
+    </div>
 
-        {% if contexte.h2h and contexte.h2h.n > 0 %}
-        <h3>⚔️ Confrontations directes ({{ contexte.h2h.n }} matchs)</h3>
-        <div class="ctx-row"><span class="label">Moyenne {{ 'points' if match.sport == 'basket' else ('jeux' if match.sport == 'tennis' else 'buts') }} H2H</span><span class="ctx-val">{{ contexte.h2h.moy_buts }}</span></div>
-        <div class="ctx-row"><span class="label">Victoires {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.h2h.v_dom }}</span></div>
-        <div class="ctx-row"><span class="label">Nuls</span><span class="ctx-val neutre">{{ contexte.h2h.nuls }}</span></div>
-        <div class="ctx-row"><span class="label">Victoires {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.h2h.v_ext }}</span></div>
-        <div class="ctx-row"><span class="label">Domination</span><span class="ctx-val">{{ contexte.h2h.domine }}</span></div>
-        {% endif %}
-
-        {% if contexte.cotes and contexte.cotes.overround %}
-        <h3>💹 Cotes des 2 équipes</h3>
-        <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_1 }}</span></div>
-        <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_2 }}</span></div>
-        <div class="ctx-row"><span class="label">Proba implicite Nul</span><span class="ctx-val neutre">{{ contexte.cotes.proba_implicite_nul }}</span></div>
-        <div class="ctx-row"><span class="label">Marge bookmaker (2 issues)</span><span class="ctx-val">{{ contexte.cotes.marge_book }}%</span></div>
-        <div class="ctx-row"><span class="label">Mouvement {{ match.equipe1 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_1 * 100) | round(2) }}%</span></div>
-        <div class="ctx-row"><span class="label">Mouvement {{ match.equipe2 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_2 * 100) | round(2) }}%</span></div>
-        <div class="ctx-row"><span class="label">Signal sharp détecté</span><span class="ctx-val">{{ contexte.cotes.sharp_signal }}</span></div>
-        {% endif %}
+    {% if aura.conflits %}
+    <div class="aura-conflit">
+        <div class="aura-conflit-titre">⚠️ {{ aura.nb_conflits }} conflit(s) détecté(s)</div>
+        {% for c in aura.conflits %}
+        <div>• {{ c }}</div>
+        {% endfor %}
     </div>
     {% endif %}
 
-    <div class="match">
-        <h2>Décision finale</h2>
-        <div class="ligne"><strong>{{ decision }}</strong></div>
-        <div class="ligne"><span class="label">{{ message_discipline }}</span></div>
+    <div class="aura-meta">
+        🔐 Empreinte AURA : <span class="aura-empreinte">{{ aura.empreinte_courte }}</span>
+        · Sport : {{ aura.sport }}
     </div>
+</div>
+{% endif %}
 
-    <div class="match">
-        {% if match.sport == "basket" %}
-        <h2>🎯 Marges et scores projetés</h2>
-        {% elif match.sport == "tennis" %}
-        <h2>🎯 Scores en sets prédits</h2>
-        {% else %}
-        <h2>🎯 Scores prédits (Dixon-Coles)</h2>
-        {% endif %}
+{% if contexte %}
+<div class="match">
+    <h2>🧠 Analyse contextuelle</h2>
 
-        <div class="ligne">
-            <span class="label">
-                {% if match.sport == "basket" %}Score à la mi-temps projeté :
-                {% elif match.sport == "tennis" %}Score après le 1er set :
-                {% else %}Score à la mi-temps le plus probable :{% endif %}
-            </span>
-        </div>
-        <div class="score-box">
-            <div class="score-item">
-                <div class="score-val">{{ top_ht_score.score }}</div>
-                <div class="label">
-                    {% if match.sport == "basket" %}Projection
-                    {% elif match.sport == "tennis" %}Proba : {{ (top_ht_score.proba * 100) | round(1) }}%
-                    {% else %}Proba : {{ (top_ht_score.proba * 100) | round(1) }}%{% endif %}
-                </div>
-            </div>
-        </div>
-
-        <div class="ligne" style="margin-top: 15px;">
-            <span class="label">
-                {% if match.sport == "basket" %}2 marges de victoire les plus probables :
-                {% elif match.sport == "tennis" %}2 scores en sets les plus probables :
-                {% else %}2 scores exacts les plus probables :{% endif %}
-            </span>
-        </div>
-        <div class="score-box">
-            {% for s in top_2_scores %}
-            <div class="score-item">
-                <div class="score-val">{{ s.score }}</div>
-                <div class="label">Proba : {{ (s.proba * 100) | round(1) }}%</div>
-            </div>
-            {% endfor %}
-        </div>
+    {% if contexte.scores and contexte.scores.dom_marques is not none %}
+    <h3>
+        {% if match.sport == 'basket' %}🏀 Moyennes de points (scores réels)
+        {% elif match.sport == 'tennis' %}🎾 Moyennes de jeux (scores réels)
+        {% else %}⚽ Moyennes de buts (scores réels){% endif %}
+    </h3>
+    <div class="ctx-row">
+        <span class="label">{{ match.equipe1 }} — marque à domicile</span>
+        <span class="ctx-val">{{ contexte.scores.dom_marques }}</span>
     </div>
-
-    {% if auto_ou %}
-    <div class="auto-ou-box">
-        <div class="auto-ou-title">🎯 Choix automatique Over/Under</div>
-        <div class="ctx-row">
-            <span class="label">EV Over</span>
-            <span class="ctx-val {% if auto_ou.ev_over < 0 %}neg{% endif %}">{{ (auto_ou.ev_over * 100) | round(2) }}%</span>
-        </div>
-        <div class="ctx-row">
-            <span class="label">EV Under</span>
-            <span class="ctx-val {% if auto_ou.ev_under < 0 %}neg{% endif %}">{{ (auto_ou.ev_under * 100) | round(2) }}%</span>
-        </div>
-        <div class="ctx-row">
-            <span class="label">Côté retenu</span>
-            <span class="ctx-val">{{ auto_ou.choix }}</span>
-        </div>
+    <div class="ctx-row">
+        <span class="label">{{ match.equipe1 }} — encaisse à domicile</span>
+        <span class="ctx-val">{{ contexte.scores.dom_encaisses }}</span>
+    </div>
+    <div class="ctx-row">
+        <span class="label">{{ match.equipe2 }} — marque à l'extérieur</span>
+        <span class="ctx-val">{{ contexte.scores.ext_marques }}</span>
+    </div>
+    <div class="ctx-row">
+        <span class="label">{{ match.equipe2 }} — encaisse à l'extérieur</span>
+        <span class="ctx-val">{{ contexte.scores.ext_encaisses }}</span>
     </div>
     {% endif %}
 
-    {% if copula_correlations %}
-    <div class="copula-box">
-        <div class="copula-title">🔗 Corrélations Copula {% if copula_sport %}({{ copula_sport }}){% endif %}</div>
-        {% for k, v in copula_correlations.items() %}
-        <div class="ctx-row">
-            <span class="label">{{ k }}</span>
-            <span class="ctx-val {% if v < 0 %}neg{% elif v > 0.4 %}neutre{% endif %}">ρ = {{ v }}</span>
+    <h3>📈 Forme</h3>
+    <div class="ctx-row">
+        <span class="label">Forme {{ match.equipe1 }} (dom. finale)</span>
+        <span class="ctx-val {% if contexte.forme.dom_finale < 0 %}neg{% elif contexte.forme.dom_finale == 0 %}neutre{% endif %}">{{ contexte.forme.dom_finale }}</span>
+    </div>
+    <div class="ctx-row">
+        <span class="label">Forme {{ match.equipe2 }} (ext. finale)</span>
+        <span class="ctx-val {% if contexte.forme.ext_finale < 0 %}neg{% elif contexte.forme.ext_finale == 0 %}neutre{% endif %}">{{ contexte.forme.ext_finale }}</span>
+    </div>
+
+    {% if contexte.h2h and contexte.h2h.n > 0 %}
+    <h3>⚔️ Confrontations directes ({{ contexte.h2h.n }} matchs)</h3>
+    <div class="ctx-row"><span class="label">Moyenne {{ 'points' if match.sport == 'basket' else ('jeux' if match.sport == 'tennis' else 'buts') }} H2H</span><span class="ctx-val">{{ contexte.h2h.moy_buts }}</span></div>
+    <div class="ctx-row"><span class="label">Victoires {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.h2h.v_dom }}</span></div>
+    <div class="ctx-row"><span class="label">Nuls</span><span class="ctx-val neutre">{{ contexte.h2h.nuls }}</span></div>
+    <div class="ctx-row"><span class="label">Victoires {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.h2h.v_ext }}</span></div>
+    <div class="ctx-row"><span class="label">Domination</span><span class="ctx-val">{{ contexte.h2h.domine }}</span></div>
+    {% endif %}
+
+    {% if contexte.cotes and contexte.cotes.overround %}
+    <h3>💹 Cotes des 2 équipes</h3>
+    <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_1 }}</span></div>
+    <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_2 }}</span></div>
+    <div class="ctx-row"><span class="label">Proba implicite Nul</span><span class="ctx-val neutre">{{ contexte.cotes.proba_implicite_nul }}</span></div>
+    <div class="ctx-row"><span class="label">Marge bookmaker (2 issues)</span><span class="ctx-val">{{ contexte.cotes.marge_book }}%</span></div>
+    <div class="ctx-row"><span class="label">Mouvement {{ match.equipe1 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_1 * 100) | round(2) }}%</span></div>
+    <div class="ctx-row"><span class="label">Mouvement {{ match.equipe2 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_2 * 100) | round(2) }}%</span></div>
+    <div class="ctx-row"><span class="label">Signal sharp détecté</span><span class="ctx-val">{{ contexte.cotes.sharp_signal }}</span></div>
+    {% endif %}
+</div>
+{% endif %}
+
+        
+<div class="match">
+    <h2>Décision finale</h2>
+    <div class="ligne"><strong>{{ decision }}</strong></div>
+    <div class="ligne"><span class="label">{{ message_discipline }}</span></div>
+</div>
+
+<div class="match">
+    {% if match.sport == "basket" %}
+    <h2>🎯 Marges et scores projetés</h2>
+    {% elif match.sport == "tennis" %}
+    <h2>🎯 Scores en sets prédits</h2>
+    {% else %}
+    <h2>🎯 Scores prédits (Dixon-Coles)</h2>
+    {% endif %}
+
+    <div class="ligne">
+        <span class="label">
+            {% if match.sport == "basket" %}Score à la mi-temps projeté :
+            {% elif match.sport == "tennis" %}Score après le 1er set :
+            {% else %}Score à la mi-temps le plus probable :{% endif %}
+        </span>
+    </div>
+    <div class="score-box">
+        <div class="score-item">
+            <div class="score-val">{{ top_ht_score.score }}</div>
+            <div class="label">
+                {% if match.sport == "basket" %}Projection
+                {% elif match.sport == "tennis" %}Proba : {{ (top_ht_score.proba * 100) | round(1) }}%
+                {% else %}Proba : {{ (top_ht_score.proba * 100) | round(1) }}%{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="ligne" style="margin-top: 15px;">
+        <span class="label">
+            {% if match.sport == "basket" %}2 marges de victoire les plus probables :
+            {% elif match.sport == "tennis" %}2 scores en sets les plus probables :
+            {% else %}2 scores exacts les plus probables :{% endif %}
+        </span>
+    </div>
+    <div class="score-box">
+        {% for s in top_2_scores %}
+        <div class="score-item">
+            <div class="score-val">{{ s.score }}</div>
+            <div class="label">Proba : {{ (s.proba * 100) | round(1) }}%</div>
         </div>
         {% endfor %}
-        <div class="ligne" style="margin-top:8px; font-size:11px;">
-            <span class="label">Mode :</span>
-            {% if copula_correlations_apprises >= 3 %}
-            <span style="color:#4ade80;">Apprises ({{ copula_correlations_apprises }})</span>
-            {% else %}
-            <span style="color:#facc15;">Par défaut (historique insuffisant)</span>
-            {% endif %}
+    </div>
+</div>
+
+{% if auto_ou %}
+<div class="auto-ou-box">
+    <div class="auto-ou-title">🎯 Choix automatique Over/Under</div>
+    <div class="ctx-row">
+        <span class="label">EV Over</span>
+        <span class="ctx-val {% if auto_ou.ev_over < 0 %}neg{% endif %}">{{ (auto_ou.ev_over * 100) | round(2) }}%</span>
+    </div>
+    <div class="ctx-row">
+        <span class="label">EV Under</span>
+        <span class="ctx-val {% if auto_ou.ev_under < 0 %}neg{% endif %}">{{ (auto_ou.ev_under * 100) | round(2) }}%</span>
+    </div>
+    <div class="ctx-row">
+        <span class="label">Côté retenu</span>
+        <span class="ctx-val">{{ auto_ou.choix }}</span>
+    </div>
+</div>
+{% endif %}
+
+{% if copula_correlations %}
+<div class="copula-box">
+    <div class="copula-title">🔗 Corrélations Copula {% if copula_sport %}({{ copula_sport }}){% endif %}</div>
+    {% for k, v in copula_correlations.items() %}
+    <div class="ctx-row">
+        <span class="label">{{ k }}</span>
+        <span class="ctx-val {% if v < 0 %}neg{% elif v > 0.4 %}neutre{% endif %}">ρ = {{ v }}</span>
+    </div>
+    {% endfor %}
+    <div class="ligne" style="margin-top:8px; font-size:11px;">
+        <span class="label">Mode :</span>
+        {% if copula_correlations_apprises >= 3 %}
+        <span style="color:#4ade80;">Apprises ({{ copula_correlations_apprises }})</span>
+        {% else %}
+        <span style="color:#facc15;">Par défaut (historique insuffisant)</span>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<h2>Recommandations</h2>
+{% for r in recommandations %}
+<div class="reco {{ r.niveau|lower }}">
+    <div class="ligne"><strong>#{{ loop.index }} — {{ r.niveau }}</strong></div>
+    <div class="ligne"><span class="label">Marché :</span> {{ r.marche }}</div>
+    <div class="ligne"><span class="label">Sélection :</span> {{ r.selection }}</div>
+    <div class="ligne"><span class="label">Proba calibrée :</span> {{ r.proba }}</div>
+    {% if r.intervalle_confiance %}
+    <div class="ligne ic">Intervalle 95% : [{{ r.intervalle_confiance.bas }} — {{ r.intervalle_confiance.haut }}]</div>
+    {% endif %}
+    {% if r.proba_avant_copule %}
+    <div class="ligne ic">🔗 Ajusté par Copula : {{ r.proba_avant_copule }} → {{ r.proba }}</div>
+    {% endif %}
+    <div class="ligne"><span class="label">Cote :</span> {{ r.cote }}</div>
+    <div class="ligne"><span class="label">EV net :</span> {{ r.ev }}</div>
+    <div class="ligne"><span class="label">Stake :</span> {{ r.stake }}</div>
+    <div class="ligne"><span class="label">Fiabilité :</span> {{ r.fiabilite }}</div>
+
+    {% if r.poids_hybrides %}
+    <div class="calib-box">
+        <div class="calib-title">🧠 Décomposition hybride</div>
+        <div class="calib-src"><span class="label">Marché ({{ (r.poids_hybrides.marche * 100) | round(0) }}%)</span><span>{{ r.proba_marche }}</span></div>
+        <div class="calib-src"><span class="label">Poisson ({{ (r.poids_hybrides.poisson * 100) | round(0) }}%)</span><span>{{ r.proba_poisson }}</span></div>
+        <div class="calib-src"><span class="label">Sharp ({{ (r.poids_hybrides.sharp * 100) | round(0) }}%)</span><span>{{ r.proba_sharp }}</span></div>
+        {% if r.proba_hist is not none %}
+        <div class="calib-src"><span class="label">Historique ({{ (r.poids_hybrides.hist * 100) | round(0) }}%)</span><span>{{ r.proba_hist }}</span></div>
+        {% else %}
+        <div class="calib-src"><span class="label">Historique</span><span class="label">en attente (20+ obs.)</span></div>
+        {% endif %}
+        {% if r.poids_hybrides.source %}
+        <div class="calib-src" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
+            <span class="label">Source des poids</span>
+            <span style="color:#22d3ee; font-weight:bold;">{{ r.poids_hybrides.source }}</span>
         </div>
+        {% endif %}
     </div>
     {% endif %}
 
-    <h2>Recommandations</h2>
-    {% for r in recommandations %}
-    <div class="reco {{ r.niveau|lower }}">
-        <div class="ligne"><strong>#{{ loop.index }} — {{ r.niveau }}</strong></div>
-        <div class="ligne"><span class="label">Marché :</span> {{ r.marche }}</div>
-        <div class="ligne"><span class="label">Sélection :</span> {{ r.selection }}</div>
-        <div class="ligne"><span class="label">Proba calibrée :</span> {{ r.proba }}</div>
-        {% if r.intervalle_confiance %}
-        <div class="ligne ic">Intervalle 95% : [{{ r.intervalle_confiance.bas }} — {{ r.intervalle_confiance.haut }}]</div>
-        {% endif %}
-        {% if r.proba_avant_copule %}
-        <div class="ligne ic">🔗 Ajusté par Copula : {{ r.proba_avant_copule }} → {{ r.proba }}</div>
-        {% endif %}
-        <div class="ligne"><span class="label">Cote :</span> {{ r.cote }}</div>
-        <div class="ligne"><span class="label">EV net :</span> {{ r.ev }}</div>
-        <div class="ligne"><span class="label">Stake :</span> {{ r.stake }}</div>
-        <div class="ligne"><span class="label">Fiabilité :</span> {{ r.fiabilite }}</div>
-
-        {% if r.poids_hybrides %}
-        <div class="calib-box">
-            <div class="calib-title">🧠 Décomposition hybride</div>
-            <div class="calib-src"><span class="label">Marché ({{ (r.poids_hybrides.marche * 100) | round(0) }}%)</span><span>{{ r.proba_marche }}</span></div>
-            <div class="calib-src"><span class="label">Poisson ({{ (r.poids_hybrides.poisson * 100) | round(0) }}%)</span><span>{{ r.proba_poisson }}</span></div>
-            <div class="calib-src"><span class="label">Sharp ({{ (r.poids_hybrides.sharp * 100) | round(0) }}%)</span><span>{{ r.proba_sharp }}</span></div>
-            {% if r.proba_hist is not none %}
-            <div class="calib-src"><span class="label">Historique ({{ (r.poids_hybrides.hist * 100) | round(0) }}%)</span><span>{{ r.proba_hist }}</span></div>
-            {% else %}
-            <div class="calib-src"><span class="label">Historique</span><span class="label">en attente (20+ obs.)</span></div>
-            {% endif %}
-            {% if r.poids_hybrides.source %}
-            <div class="calib-src" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
-                <span class="label">Source des poids</span>
-                <span style="color:#22d3ee; font-weight:bold;">{{ r.poids_hybrides.source }}</span>
-            </div>
-            {% endif %}
+    {% if r.facteurs_amplification %}
+    <div class="amplif-box">
+        <div class="amplif-title">⚡ Couche A — Amplification</div>
+        <div class="amplif-row"><span class="label">EV avant</span><span>{{ r.ev_brut_avant_amplification }}</span></div>
+        <div class="amplif-row"><span class="label">EV après</span><span class="amplif-val">{{ r.ev }}</span></div>
+        <div class="amplif-row"><span class="label">Fiabilité avant</span><span>{{ r.fiabilite_avant_amplification }}</span></div>
+        <div class="amplif-row"><span class="label">Fiabilité après</span><span class="amplif-val">{{ r.fiabilite }}</span></div>
+        <div class="amplif-facteurs">
+            <span>CSA {{ r.facteurs_amplification.csa }}</span>
+            <span>CBE {{ r.facteurs_amplification.cbe }}</span>
+            <span>VS {{ r.facteurs_amplification.vs }}</span>
+            <span>SDD {{ r.facteurs_amplification.sdd }}</span>
         </div>
-        {% endif %}
-
-        {% if r.facteurs_amplification %}
-        <div class="amplif-box">
-            <div class="amplif-title">⚡ Couche A — Amplification</div>
-            <div class="amplif-row"><span class="label">EV avant</span><span>{{ r.ev_brut_avant_amplification }}</span></div>
-            <div class="amplif-row"><span class="label">EV après</span><span class="amplif-val">{{ r.ev }}</span></div>
-            <div class="amplif-row"><span class="label">Fiabilité avant</span><span>{{ r.fiabilite_avant_amplification }}</span></div>
-            <div class="amplif-row"><span class="label">Fiabilité après</span><span class="amplif-val">{{ r.fiabilite }}</span></div>
-            <div class="amplif-facteurs">
-                <span>CSA {{ r.facteurs_amplification.csa }}</span>
-                <span>CBE {{ r.facteurs_amplification.cbe }}</span>
-                <span>VS {{ r.facteurs_amplification.vs }}</span>
-                <span>SDD {{ r.facteurs_amplification.sdd }}</span>
-            </div>
-        </div>
-        {% endif %}
     </div>
-    {% endfor %}
+    {% endif %}
+</div>
+{% endfor %}
 
+        
     {% if seuils_amplifies %}
     <div class="seuils-box">
         <div class="seuil-item">
@@ -790,4 +852,4 @@
     <a href="/" class="back">← Nouvelle analyse</a>
     <a href="/dashboard" class="back back-alt">📊 Dashboard</a>
 </body>
-                </html>
+</html>
