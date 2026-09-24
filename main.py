@@ -155,6 +155,7 @@ async def analyser(
             "calendrier_basket": resultat.get("calendrier_basket", {}),
             "impact_calendrier_basket": resultat.get("impact_calendrier_basket", {}),
             "stats_avancees": resultat.get("stats_avancees", {}),
+            "aura": resultat.get("aura", {}),
         },
     )
 
@@ -186,4 +187,4 @@ async def dashboard(request: Request):
             "roi": roi,
             "dernieres": dernieres,
         },
-        )
+)
