@@ -41,14 +41,14 @@ async def analyser(
     h2h_5: str = Form(""),
     cote_ah: float = Form(...),
     cote_over25: float = Form(...),
-    cote_btts: float = Form(...),
+    cote_btts: float = Form(0.0),  # ← OPTIONNEL (hockey n'a pas de BTTS)
     volume: int = Form(...),
     # Champs tennis
     matchs_7j_j1: int = Form(0),
     matchs_7j_j2: int = Form(0),
     matchs_14j_j1: int = Form(0),
     matchs_14j_j2: int = Form(0),
-    # Champs calendrier football
+    # Champs calendrier football / hockey
     matchs_7j_dom: int = Form(0),
     matchs_14j_dom: int = Form(0),
     jours_repos_dom: int = Form(7),
@@ -146,6 +146,9 @@ async def analyser(
             "bma_actif": resultat.get("bma_actif", False),
             "basket_config": resultat.get("basket_config", {}),
             "tennis_config": resultat.get("tennis_config", {}),
+            "hockey_config": resultat.get("hockey_config", {}),
+            "hockey_periodes": resultat.get("hockey_periodes", {}),
+            "hockey_scores_periodes": resultat.get("hockey_scores_periodes", {}),
             "elo_info": resultat.get("elo_info", {}),
             "blend_info": resultat.get("blend_info", {}),
             "momentum_info": resultat.get("momentum_info", {}),
@@ -188,4 +191,4 @@ async def dashboard(request: Request):
             "roi": roi,
             "dernieres": dernieres,
         },
-    )
+        )
