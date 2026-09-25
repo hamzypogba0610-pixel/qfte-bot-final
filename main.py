@@ -161,6 +161,7 @@ async def analyser(
             "aura": resultat.get("aura", {}),
             "oracle": resultat.get("oracle", {}),
             "chronos": resultat.get("chronos", {}),
+            "instinct": resultat.get("instinct", {}),
         },
     )
 
