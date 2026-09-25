@@ -1,11 +1,11 @@
 """
 Module Copula Calibration — QFTE V23.0.
 
-Modélise les dépendances entre marchés (football, basket, tennis) via
-une copule gaussienne. Apprend les corrélations depuis l'historique et
+Modélise les dépendances entre marchés (football, basket, tennis, hockey)
+via une copule gaussienne. Apprend les corrélations depuis l'historique et
 ajuste les probabilités marginales en conséquence.
 
-✨ VERSION 3 : Isolation par sport (anti-contamination) ✨
+✨ VERSION 4 : Isolation par sport (foot, basket, tennis, hockey) ✨
 
 Pur Python — aucune dépendance externe.
 """
@@ -54,19 +54,14 @@ def norm_ppf(p):
                 ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)
 
 
-# ============================================================
-# COPULE GAUSSIENNE BIVARIÉE
-# ============================================================
 def copule_gaussienne_bivariee(p1, p2, rho):
     if p1 <= 0 or p1 >= 1 or p2 <= 0 or p2 >= 1:
         return p1 * p2
     rho = max(-0.95, min(0.95, rho))
     z1 = norm_ppf(p1)
     z2 = norm_ppf(p2)
-
     phi_a = math.exp(-z1**2/2) / math.sqrt(2*math.pi)
     phi_b = math.exp(-z2**2/2) / math.sqrt(2*math.pi)
-
     joint = norm_cdf(z1) * norm_cdf(z2) + rho * phi_a * phi_b * (1 + rho * rho / 6)
     return max(0.0, min(1.0, joint))
 
@@ -74,13 +69,11 @@ def copule_gaussienne_bivariee(p1, p2, rho):
 def ajuster_marginale(p_cible, p_partenaire, rho, force=0.30):
     if rho == 0 or p_cible <= 0 or p_cible >= 1:
         return p_cible
-
     ecart_signe = (p_cible - 0.5) * (p_partenaire - 0.5)
     if ecart_signe >= 0:
         facteur = force * 0.15
     else:
         facteur = force * 0.50
-
     delta = rho * facteur * (p_partenaire - 0.5) * 2
     p_new = p_cible + delta
     return max(0.02, min(0.98, p_new))
@@ -105,15 +98,9 @@ def _correlation_empirique(xs, ys):
 
 
 def apprendre_correlations():
-    """
-    Apprend les corrélations empiriques par sport.
-    Retourne un dict {(sport, marche1, marche2): rho}.
-    Les clés sont TRIÉES alphabétiquement pour marche1/marche2.
-    """
     from qfte_engine.historique import charger_historique, _pari_gagne
 
     historique = charger_historique()
-    # Structure : { (sport, date) : {marche: outcome} }
     par_date = {}
 
     for h in historique:
@@ -154,9 +141,8 @@ def apprendre_correlations():
     return correlations
 
 
-
 # ============================================================
-# CORRÉLATIONS PAR DÉFAUT (clé = (sport, marche1, marche2))
+# CORRÉLATIONS PAR DÉFAUT
 # ============================================================
 # --- Football ---
 CORRELATIONS_FOOT = {
@@ -174,12 +160,19 @@ CORRELATIONS_BASKET = {
 
 # --- Tennis ---
 CORRELATIONS_TENNIS = {
-    # Vainqueur et Score 2-0 sont très corrélés
     ("tennis", "Score Exact Sets", "Vainqueur"): 0.75,
-    # Vainqueur et Over/Under Jeux : faiblement corrélés
     ("tennis", "Over/Under Jeux", "Vainqueur"): 0.10,
-    # Score 2-0 et Over/Under Jeux : corrélation modérée (2-0 = souvent moins de jeux)
     ("tennis", "Over/Under Jeux", "Score Exact Sets"): -0.20,
+}
+
+# --- Hockey ---
+CORRELATIONS_HOCKEY = {
+    # Money Line et Puck Line sont très corrélés (Puck Line = cas particulier)
+    ("hockey", "Money Line", "Puck Line -1.5"): 0.75,
+    # Money Line et Total Buts : faiblement corrélés
+    ("hockey", "Money Line", "Total Buts"): 0.05,
+    # Puck Line et Total Buts : légèrement positifs (plus de buts = + de chance de gagner par 2+)
+    ("hockey", "Puck Line -1.5", "Total Buts"): 0.10,
 }
 
 # Fusion de toutes les corrélations par défaut
@@ -187,27 +180,17 @@ CORRELATIONS_DEFAUT = {
     **CORRELATIONS_FOOT,
     **CORRELATIONS_BASKET,
     **CORRELATIONS_TENNIS,
+    **CORRELATIONS_HOCKEY,
 }
 
 
 def _trouver_correlation(sport, marche_a, marche_b, correlations):
-    """
-    Trouve la corrélation entre deux marchés pour un sport donné.
-    Cherche d'abord dans les corrélations apprises (par sport),
-    puis dans les valeurs par défaut.
-    """
     m1, m2 = sorted([marche_a, marche_b])
-
-    # 1. Corrélations apprises (déjà préfixées par sport)
     cle_apprise = (sport, m1, m2)
     if cle_apprise in correlations:
         return correlations[cle_apprise]
-
-    # 2. Corrélations par défaut
     if cle_apprise in CORRELATIONS_DEFAUT:
         return CORRELATIONS_DEFAUT[cle_apprise]
-
-    # 3. Aucune corrélation trouvée
     return 0.0
 
 
@@ -215,10 +198,6 @@ def _trouver_correlation(sport, marche_a, marche_b, correlations):
 # APPLICATION
 # ============================================================
 def appliquer_copule(data):
-    """
-    Applique la copule gaussienne sur les probabilités calibrées
-    pour assurer la cohérence inter-marchés — par sport.
-    """
     marches = data.get("marches", [])
     match = data.get("match", {})
     sport = match.get("sport", "football")
@@ -226,9 +205,7 @@ def appliquer_copule(data):
     if len(marches) < 2:
         return data
 
-    # Apprentissage des corrélations (par sport)
     correlations = apprendre_correlations()
-    # Filtrer uniquement les corrélations du sport courant
     correlations_sport = {
         k: v for k, v in correlations.items()
         if isinstance(k, tuple) and len(k) >= 1 and k[0] == sport
@@ -237,7 +214,6 @@ def appliquer_copule(data):
     data["copula_correlations_apprises"] = len(correlations_sport)
     data["copula_sport"] = sport
 
-    # Construction du dict d'affichage : on montre les paires utilisées
     paires_affichees = {}
     noms = [m.get("nom", "") for m in marches]
     for i in range(len(noms)):
@@ -248,13 +224,11 @@ def appliquer_copule(data):
 
     data["copula_correlations"] = paires_affichees
 
-    # Extraction des probas actuelles
     probas = {}
     for m in marches:
         nom = m.get("nom", "")
         probas[nom] = float(m.get("proba_calibree", 0.5))
 
-    # Application de l'ajustement croisé
     for m in marches:
         nom = m.get("nom", "")
         p_orig = probas.get(nom, 0.5)
@@ -267,7 +241,6 @@ def appliquer_copule(data):
             rho = _trouver_correlation(sport, nom, autre_nom, correlations_sport)
             if rho == 0:
                 continue
-
             p_temp = ajuster_marginale(p_ajustee, p_autre, rho, force=0.30)
             poids = abs(rho)
             p_ajustee = p_ajustee * (1 - poids) + p_temp * poids
@@ -277,7 +250,6 @@ def appliquer_copule(data):
             p_ajustee = p_orig
 
         p_ajustee = max(0.02, min(0.98, p_ajustee))
-
         m["proba_avant_copule"] = round(p_orig, 4)
         m["proba_calibree"] = round(p_ajustee, 4)
 
