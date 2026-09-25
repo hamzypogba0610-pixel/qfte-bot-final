@@ -158,6 +158,27 @@
         .chronos-plan-val { color: #fde68a; font-weight: bold; margin-top: 2px; display: block; }
         .chronos-meta { color: #6b7280; font-size: 11px; margin-top: 12px; text-align: center; }
         .chronos-empreinte { color: #fbbf24; font-weight: bold; font-family: monospace; }
+        .instinct-box { background: linear-gradient(135deg, #1a0000, #141414); padding: 18px; border-radius: 12px; margin-bottom: 20px; border: 3px solid #ef4444; box-shadow: 0 0 25px rgba(239,68,68,0.3); }
+        .instinct-niveau-feu-vert { border-color: #4ade80; box-shadow: 0 0 30px rgba(74,222,128,0.4); }
+        .instinct-niveau-feu-orange { border-color: #facc15; box-shadow: 0 0 20px rgba(250,204,21,0.3); }
+        .instinct-niveau-pas-de-feu { border-color: #6b7280; opacity: 0.9; }
+        .instinct-title { color: #ef4444; font-weight: bold; font-size: 17px; margin-bottom: 15px; letter-spacing: 2px; text-align: center; }
+        .instinct-decision-container { text-align: center; margin: 15px 0; padding: 15px; border-radius: 8px; background: rgba(0,0,0,0.4); }
+        .instinct-decision { font-size: 32px; font-weight: bold; letter-spacing: 4px; }
+        .instinct-decision-msg { color: #9ca3af; font-size: 13px; margin-top: 8px; font-style: italic; }
+        .instinct-score-container { text-align: center; margin: 15px 0; padding: 12px; border-radius: 8px; background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.2); }
+        .instinct-score { font-size: 40px; font-weight: bold; color: #4ade80; line-height: 1; }
+        .instinct-score-label { color: #9ca3af; font-size: 11px; letter-spacing: 1px; margin-top: 4px; }
+        .instinct-insight { background: linear-gradient(135deg, #1a0000, #0a0a0a); padding: 16px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 15px 0; font-style: italic; color: #fca5a5; font-size: 15px; line-height: 1.6; text-align: center; font-weight: bold; }
+        .instinct-insight::before { content: "💀 "; font-style: normal; }
+        .instinct-zone { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-top: 15px; }
+        .instinct-zone-title { color: #ef4444; font-weight: bold; font-size: 12px; margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; text-align: center; }
+        .instinct-zone-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #2a2a2a; }
+        .instinct-zone-row:last-child { border-bottom: none; }
+        .instinct-zone-label { color: #9ca3af; }
+        .instinct-zone-val { color: #fca5a5; font-weight: bold; font-family: monospace; }
+        .instinct-meta { color: #6b7280; font-size: 11px; margin-top: 12px; text-align: center; }
+        .instinct-empreinte { color: #ef4444; font-weight: bold; font-family: monospace; }
         .signature-box { margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #0a0a0a, #141414); border-radius: 12px; border: 2px solid #2a2a2a; text-align: center; }
         .sig-diamant { border-color: #a78bfa; box-shadow: 0 0 20px rgba(167,139,250,0.3); }
         .sig-or { border-color: #facc15; box-shadow: 0 0 15px rgba(250,204,21,0.25); }
@@ -358,7 +379,6 @@
 </div>
 {% endif %}
 
-    
 {% if stats_avancees %}
 <div class="stats-box">
     <div class="stats-title">📊 Statistiques Avancées</div>
@@ -410,6 +430,10 @@
             <h4>🎾 {{ match.equipe1 }}</h4>
             <div class="stats-row"><span class="stats-label">Service Idx</span><span class="stats-val">{{ stats_avancees.dom.service_index }}</span></div>
             <div class="stats-row"><span class="stats-label">Return Idx</span><span class="stats-val">{{ stats_avancees.dom.return_index }}</span></div>
+            <div class="stats-row"><span class="stats-label">Dominance</span><span class="stats-val">{{ stats_avancees.dom.dominance_ratio }}</span></div>
+            <div class="stats-row"><span class="stats-label">Su
+
+                            <div class="stats-row"><span class="stats-label">Return Idx</span><span class="stats-val">{{ stats_avancees.dom.return_index }}</span></div>
             <div class="stats-row"><span class="stats-label">Dominance</span><span class="stats-val">{{ stats_avancees.dom.dominance_ratio }}</span></div>
             <div class="stats-row"><span class="stats-label">Surface Idx</span><span class="stats-val {% if stats_avancees.dom.surface_index < 0 %}neg{% else %}neutre{% endif %}">{{ stats_avancees.dom.surface_index }}</span></div>
             <div class="stats-row"><span class="stats-label">Régularité</span><span class="stats-val">{{ stats_avancees.dom.regularite }}</span></div>
@@ -542,6 +566,161 @@
 {% if chronos %}
 <div class="chronos-box chronos-niveau-{{ chronos.genie.niveau|lower|replace('é','e')|replace('è','e')|replace('ê','e')|replace('à','a') }}">
     <div class="chronos-title">🎩 CHRONOS · L'ARCHITECTE — N°10 Algorithmique</div>
+    <div class="chronos-decision-container">
+        <div class="chronos-decision" style="color: {{ chronos.decision.couleur }};">{{ chronos.decision.emoji }} {{ chronos.decision.decision }}</div>
+        <div class="chronos-decision-msg">{{ chronos.decision.message }}</div>
+    </div>
+    <div class="chronos-genie-container">
+        <div class="chronos-genie-score">{{ chronos.genie.score }} / 100</div>
+        <div class="chronos-genie-niveau" style="color: {{ chronos.genie.couleur }};">{{ chronos.genie.emoji }} {{ chronos.genie.niveau }}</div>
+        <div class="chronos-genie-desc">{{ chronos.genie.description }}</div>
+    </div>
+    <div class="chronos-insight">{{ chronos.insight }}</div>
+    <div class="chronos-section">
+        <div class="chronos-section-title">👁️ Vision multi-horizons</div>
+        <div class="chronos-horizon-grid">
+            {% for h in chronos.horizons %}
+            <div class="chronos-horizon-item">
+                <div class="chronos-horizon-label">{{ h.label }}</div>
+                <div class="chronos-horizon-cote">{{ h.cote_predite }}</div>
+                <div class="chronos-horizon-var" style="color: {% if h.variation_pct < -1 %}#4ade80{% elif h.variation_pct > 1 %}#ef4444{% else %}#9ca3af{% endif %};">{{ h.tendance }} {{ h.variation_pct }}%</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="chronos-section">
+        <div class="chronos-section-title">⏳ Métriques temporelles</div>
+        <div class="chronos-metric"><span class="chronos-metric-label">Vélocité</span><span class="chronos-metric-val">{{ chronos.velocite.velocite }} ({{ chronos.velocite.intensite }})</span></div>
+        <div class="chronos-metric"><span class="chronos-metric-label">Direction</span><span class="chronos-metric-val">{{ chronos.direction.emoji }} {{ chronos.direction.interpretation }}</span></div>
+        <div class="chronos-metric"><span class="chronos-metric-label">Fenêtre optimale</span><span class="chronos-metric-val">{{ chronos.fenetre.urgence }} · {{ chronos.fenetre.fenetre_min_h }}h à {{ chronos.fenetre.fenetre_max_h }}h</span></div>
+        <div class="chronos-metric"><span class="chronos-metric-label">Signal sharp</span><span class="chronos-metric-val">{{ chronos.sharp.emoji }} {{ chronos.sharp.score }} / 100</span></div>
+        <div class="chronos-metric"><span class="chronos-metric-label">Pression</span><span class="chronos-metric-val">{{ chronos.pression.niveau }} ({{ chronos.pression.score }})</span></div>
+    </div>
+    <div class="chronos-section">
+        <div class="chronos-section-title">📋 Plan de bataille</div>
+        <div class="chronos-plan-line">
+            <span class="chronos-plan-label">Action</span>
+            <span class="chronos-plan-val">{{ chronos.plan.action }}</span>
+        </div>
+        <div class="chronos-plan-line">
+            <span class="chronos-plan-label">Mise</span>
+            <span class="chronos-plan-val">{{ chronos.plan.mise }}</span>
+        </div>
+        <div class="chronos-plan-line">
+            <span class="chronos-plan-label">Sortie</span>
+            <span class="chronos-plan-val">{{ chronos.plan.sortie }}</span>
+        </div>
+    </div>
+    <div class="chronos-meta">
+        🔐 Empreinte CHRONOS : <span class="chronos-empreinte">{{ chronos.empreinte_courte }}</span>
+        · Sport : {{ chronos.sport }}
+    </div>
+</div>
+{% endif %}
+
+{% if instinct %}
+<div class="instinct-box instinct-niveau-{{ instinct.decision.decision|lower|replace(' ', '-')|replace('é','e')|replace('è','e') }}">
+    <div class="instinct-title">💀 L'INSTINCT · LE TUEUR — N°9 Algorithmique</div>
+    <div class="instinct-decision-container">
+        <div class="instinct-decision" style="color: {{ instinct.decision.couleur }};">{{ instinct.decision.emoji }} {{ instinct.decision.decision }}</div>
+        <div class="instinct-decision-msg">{{ instinct.decision.message }}</div>
+    </div>
+    <div class="instinct-score-container">
+        <div class="instinct-score">{{ instinct.instinct_score.score }} / 100</div>
+        <div class="instinct-score-label">INSTINCT SCORE — CONVICTION PURE</div>
+    </div>
+    <div class="instinct-insight">{{ instinct.instinct_pur }}</div>
+    <div class="instinct-zone">
+        <div class="instinct-zone-title">🎯 Zone de frappe</div>
+        <div class="instinct-zone-row"><span class="instinct-zone-label">Marché</span><span class="instinct-zone-val">{{ instinct.zone.marche }}</span></div>
+        <div class="instinct-zone-row"><span class="instinct-zone-label">Sélection</span><span class="instinct-zone-val">{{ instinct.zone.selection }}</span></div>
+        <div class="instinct-zone-row"><span class="instinct-zone-label">Cote</span><span class="instinct-zone-val">{{ instinct.zone.cote }}</span></div>
+        <div class="instinct-zone-row"><span class="instinct-zone-label">Mise recommandée</span><span class="instinct-zone-val">{{ instinct.zone.mise }}</span></div>
+        <div class="instinct-zone-row"><span class="instinct-zone-label">Niveau</span><span class="instinct-zone-val">{{ instinct.zone.niveau }}</span></div>
+    </div>
+    <div class="instinct-meta">
+        🔐 Empreinte INSTINCT : <span class="instinct-empreinte">{{ instinct.empreinte_courte }}</span>
+        · Sport : {{ instinct.sport }}
+    </div>
+</div>
+{% endif %}
+
+    
+{% if aura %}
+<div class="aura-box aura-niveau-{{ aura.niveau|lower|replace(' ', '-') }}">
+    <div class="aura-title">⚡ COUCHE AURA — Analyse Universelle de Robustesse</div>
+    <div class="aura-score-container">
+        <div class="aura-score">{{ aura.score }} / 100</div>
+        <div class="aura-niveau" style="color: {{ aura.couleur }};">{{ aura.emoji }} {{ aura.niveau }}</div>
+    </div>
+    <div class="aura-attribution">
+        <div class="aura-signal">
+            <span class="aura-signal-label">🎯 Contexte ({{ (aura.poids_sport.A * 100) | round(0) }}%)</span>
+            <span class="aura-signal-val">{{ aura.signaux.A }} · +{{ aura.attribution.A }}</span>
+        </div>
+        <div class="aura-signal">
+            <span class="aura-signal-label">📋 Qualité ({{ (aura.poids_sport.U * 100) | round(0) }}%)</span>
+            <span class="aura-signal-val">{{ aura.signaux.U }} · +{{ aura.attribution.U }}</span>
+        </div>
+        <div class="aura-signal">
+            <span class="aura-signal-label">🧬 Robustesse ({{ (aura.poids_sport.R * 100) | round(0) }}%)</span>
+            <span class="aura-signal-val">{{ aura.signaux.R }} · +{{ aura.attribution.R }}</span>
+        </div>
+        <div class="aura-signal">
+            <span class="aura-signal-label">⚡ Amplification ({{ (aura.poids_sport.AMP * 100) | round(0) }}%)</span>
+            <span class="aura-signal-val">{{ aura.signaux.AMP }} · +{{ aura.attribution.AMP }}</span>
+        </div>
+    </div>
+    {% if aura.conflits %}
+    <div class="aura-conflit">
+        <div class="aura-conflit-titre">⚠️ {{ aura.nb_conflits }} conflit(s) détecté(s)</div>
+        {% for c in aura.conflits %}
+        <div>• {{ c }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div class="aura-meta">
+        🔐 Empreinte AURA : <span class="aura-empreinte">{{ aura.empreinte_courte }}</span>
+        · Sport : {{ aura.sport }}
+    </div>
+</div>
+{% endif %}
+
+{% if oracle %}
+<div class="oracle-box">
+    <div class="oracle-title">🔮 COUCHE ORACLE — Monte Carlo 10 000 simulations</div>
+    <div class="oracle-score-container">
+        <div class="oracle-score">{{ (oracle.metriques.proba_simulee * 100) | round(1) }}%</div>
+        <div class="oracle-subtitle">Probabilité simulée (J1 gagne)</div>
+    </div>
+    <div class="oracle-metrics">
+        <div class="oracle-metric"><span class="oracle-metric-label">IC 95% bas</span><span class="oracle-metric-val">{{ (oracle.metriques.ic_bas * 100) | round(1) }}%</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">IC 95% haut</span><span class="oracle-metric-val">{{ (oracle.metriques.ic_haut * 100) | round(1) }}%</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">Écart-type</span><span class="oracle-metric-val">{{ oracle.metriques.ecart_type }}</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">VaR 5%</span><span class="oracle-metric-val">{{ oracle.metriques.var_5 }}</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">CVaR 5%</span><span class="oracle-metric-val">{{ oracle.metriques.cvar_5 }}</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">Meilleur cas</span><span class="oracle-metric-val">{{ oracle.metriques.meilleur }}</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">Victoires nettes</span><span class="oracle-metric-val">{{ (oracle.metriques.victoires_nettes * 100) | round(1) }}%</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">Défaites nettes</span><span class="oracle-metric-val">{{ (oracle.metriques.defaites_nettes * 100) | round(1) }}%</span></div>
+    </div>
+    <div class="oracle-histo">
+        {% for barre in oracle.histogramme %}
+        <div class="oracle-bar" style="height: {{ barre }}%;"></div>
+        {% endfor %}
+    </div>
+    <div class="oracle-interpretation">{{ oracle.interpretation }}</div>
+    <div class="oracle-stabilite">{{ oracle.stabilite_texte }} · Stabilité : {{ oracle.metriques.stabilite }} / 100</div>
+    <div class="oracle-meta">
+        🔐 Empreinte ORACLE : <span class="oracle-empreinte">{{ oracle.empreinte_courte }}</span>
+        · {{ oracle.n_simulations }} simulations · {{ oracle.sport }}
+    </div>
+</div>
+{% endif %}
+
+    
+{% if chronos %}
+<div class="chronos-box chronos-niveau-{{ chronos.genie.niveau|lower|replace('é','e')|replace('è','e')|replace('ê','e')|replace('à','a') }}">
+    <div class="chronos-title">🎩 CHRONOS · L'ARCHITECTE — N°10 Algorithmique</div>
 
     <div class="chronos-decision-container">
         <div class="chronos-decision" style="color: {{ chronos.decision.couleur }};">{{ chronos.decision.emoji }} {{ chronos.decision.decision }}</div>
@@ -597,6 +776,38 @@
     <div class="chronos-meta">
         🔐 Empreinte CHRONOS : <span class="chronos-empreinte">{{ chronos.empreinte_courte }}</span>
         · Sport : {{ chronos.sport }}
+    </div>
+</div>
+{% endif %}
+
+{% if instinct %}
+<div class="instinct-box instinct-niveau-{{ instinct.decision.decision|lower|replace(' ', '-')|replace('é','e')|replace('è','e') }}">
+    <div class="instinct-title">💀 L'INSTINCT · LE TUEUR — N°9 Algorithmique</div>
+
+    <div class="instinct-decision-container">
+        <div class="instinct-decision" style="color: {{ instinct.decision.couleur }};">{{ instinct.decision.emoji }} {{ instinct.decision.decision }}</div>
+        <div class="instinct-decision-msg">{{ instinct.decision.message }}</div>
+    </div>
+
+    <div class="instinct-score-container">
+        <div class="instinct-score">{{ instinct.instinct_score.score }} / 100</div>
+        <div class="instinct-score-label">INSTINCT SCORE — CONVICTION PURE</div>
+    </div>
+
+    <div class="instinct-insight">{{ instinct.instinct_pur }}</div>
+
+    <div class="instinct-zone">
+        <div class="instinct-zone-title">🎯 Zone de frappe</div>
+        <div class="instinct-zone-row"><span class="instinct-zone-label">Marché</span><span class="instinct-zone-val">{{ instinct.zone.marche }}</span></div>
+        <div class="instinct-zone-row"><span class="instinct-zone-label">Sélection</span><span class="instinct-zone-val">{{ instinct.zone.selection }}</span></div>
+        <div class="instinct-zone-row"><span class="instinct-zone-label">Cote</span><span class="instinct-zone-val">{{ instinct.zone.cote }}</span></div>
+        <div class="instinct-zone-row"><span class="instinct-zone-label">Mise recommandée</span><span class="instinct-zone-val">{{ instinct.zone.mise }}</span></div>
+        <div class="instinct-zone-row"><span class="instinct-zone-label">Niveau</span><span class="instinct-zone-val">{{ instinct.zone.niveau }}</span></div>
+    </div>
+
+    <div class="instinct-meta">
+        🔐 Empreinte INSTINCT : <span class="instinct-empreinte">{{ instinct.empreinte_courte }}</span>
+        · Sport : {{ instinct.sport }}
     </div>
 </div>
 {% endif %}
@@ -756,63 +967,63 @@
 </div>
 {% endif %}
 
-<h2>Recommandations</h2>
-{% for r in recommandations %}
-<div class="reco {{ r.niveau|lower }}">
-    <div class="ligne"><strong>#{{ loop.index }} — {{ r.niveau }}</strong></div>
-    <div class="ligne"><span class="label">Marché :</span> {{ r.marche }}</div>
-    <div class="ligne"><span class="label">Sélection :</span> {{ r.selection }}</div>
-    <div class="ligne"><span class="label">Proba calibrée :</span> {{ r.proba }}</div>
-    {% if r.intervalle_confiance %}
-    <div class="ligne ic">Intervalle 95% : [{{ r.intervalle_confiance.bas }} — {{ r.intervalle_confiance.haut }}]</div>
-    {% endif %}
-    {% if r.proba_avant_copule %}
-    <div class="ligne ic">🔗 Ajusté par Copula : {{ r.proba_avant_copule }} → {{ r.proba }}</div>
-    {% endif %}
-    <div class="ligne"><span class="label">Cote :</span> {{ r.cote }}</div>
-    <div class="ligne"><span class="label">EV net :</span> {{ r.ev }}</div>
-    <div class="ligne"><span class="label">Stake :</span> {{ r.stake }}</div>
-    <div class="ligne"><span class="label">Fiabilité :</span> {{ r.fiabilite }}</div>
-
-    {% if r.poids_hybrides %}
-    <div class="calib-box">
-        <div class="calib-title">🧠 Décomposition hybride</div>
-        <div class="calib-src"><span class="label">Marché ({{ (r.poids_hybrides.marche * 100) | round(0) }}%)</span><span>{{ r.proba_marche }}</span></div>
-        <div class="calib-src"><span class="label">Poisson ({{ (r.poids_hybrides.poisson * 100) | round(0) }}%)</span><span>{{ r.proba_poisson }}</span></div>
-        <div class="calib-src"><span class="label">Sharp ({{ (r.poids_hybrides.sharp * 100) | round(0) }}%)</span><span>{{ r.proba_sharp }}</span></div>
-        {% if r.proba_hist is not none %}
-        <div class="calib-src"><span class="label">Historique ({{ (r.poids_hybrides.hist * 100) | round(0) }}%)</span><span>{{ r.proba_hist }}</span></div>
-        {% else %}
-        <div class="calib-src"><span class="label">Historique</span><span class="label">en attente (20+ obs.)</span></div>
-        {% endif %}
-        {% if r.poids_hybrides.source %}
-        <div class="calib-src" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
-            <span class="label">Source des poids</span>
-            <span style="color:#22d3ee; font-weight:bold;">{{ r.poids_hybrides.source }}</span>
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
-
-    {% if r.facteurs_amplification %}
-    <div class="amplif-box">
-        <div class="amplif-title">⚡ Couche A — Amplification</div>
-        <div class="amplif-row"><span class="label">EV avant</span><span>{{ r.ev_brut_avant_amplification }}</span></div>
-        <div class="amplif-row"><span class="label">EV après</span><span class="amplif-val">{{ r.ev }}</span></div>
-        <div class="amplif-row"><span class="label">Fiabilité avant</span><span>{{ r.fiabilite_avant_amplification }}</span></div>
-        <div class="amplif-row"><span class="label">Fiabilité après</span><span class="amplif-val">{{ r.fiabilite }}</span></div>
-        <div class="amplif-facteurs">
-            <span>CSA {{ r.facteurs_amplification.csa }}</span>
-            <span>CBE {{ r.facteurs_amplification.cbe }}</span>
-            <span>VS {{ r.facteurs_amplification.vs }}</span>
-            <span>SDD {{ r.facteurs_amplification.sdd }}</span>
-        </div>
-    </div>
-    {% endif %}
-</div>
-{% endfor %}
-
     
+    <h2>Recommandations</h2>
+    {% for r in recommandations %}
+    <div class="reco {{ r.niveau|lower }}">
+        <div class="ligne"><strong>#{{ loop.index }} — {{ r.niveau }}</strong></div>
+        <div class="ligne"><span class="label">Marché :</span> {{ r.marche }}</div>
+        <div class="ligne"><span class="label">Sélection :</span> {{ r.selection }}</div>
+        <div class="ligne"><span class="label">Proba calibrée :</span> {{ r.proba }}</div>
+        {% if r.intervalle_confiance %}
+        <div class="ligne ic">Intervalle 95% : [{{ r.intervalle_confiance.bas }} — {{ r.intervalle_confiance.haut }}]</div>
+        {% endif %}
+        {% if r.proba_avant_copule %}
+        <div class="ligne ic">🔗 Ajusté par Copula : {{ r.proba_avant_copule }} → {{ r.proba }}</div>
+        {% endif %}
+        <div class="ligne"><span class="label">Cote :</span> {{ r.cote }}</div>
+        <div class="ligne"><span class="label">EV net :</span> {{ r.ev }}</div>
+        <div class="ligne"><span class="label">Stake :</span> {{ r.stake }}</div>
+        <div class="ligne"><span class="label">Fiabilité :</span> {{ r.fiabilite }}</div>
+
+        {% if r.poids_hybrides %}
+        <div class="calib-box">
+            <div class="calib-title">🧠 Décomposition hybride</div>
+            <div class="calib-src"><span class="label">Marché ({{ (r.poids_hybrides.marche * 100) | round(0) }}%)</span><span>{{ r.proba_marche }}</span></div>
+            <div class="calib-src"><span class="label">Poisson ({{ (r.poids_hybrides.poisson * 100) | round(0) }}%)</span><span>{{ r.proba_poisson }}</span></div>
+            <div class="calib-src"><span class="label">Sharp ({{ (r.poids_hybrides.sharp * 100) | round(0) }}%)</span><span>{{ r.proba_sharp }}</span></div>
+            {% if r.proba_hist is not none %}
+            <div class="calib-src"><span class="label">Historique ({{ (r.poids_hybrides.hist * 100) | round(0) }}%)</span><span>{{ r.proba_hist }}</span></div>
+            {% else %}
+            <div class="calib-src"><span class="label">Historique</span><span class="label">en attente (20+ obs.)</span></div>
+            {% endif %}
+            {% if r.poids_hybrides.source %}
+            <div class="calib-src" style="margin-top:6px; padding-top:6px; border-top:1px solid #2a2a2a;">
+                <span class="label">Source des poids</span>
+                <span style="color:#22d3ee; font-weight:bold;">{{ r.poids_hybrides.source }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if r.facteurs_amplification %}
+        <div class="amplif-box">
+            <div class="amplif-title">⚡ Couche A — Amplification</div>
+            <div class="amplif-row"><span class="label">EV avant</span><span>{{ r.ev_brut_avant_amplification }}</span></div>
+            <div class="amplif-row"><span class="label">EV après</span><span class="amplif-val">{{ r.ev }}</span></div>
+            <div class="amplif-row"><span class="label">Fiabilité avant</span><span>{{ r.fiabilite_avant_amplification }}</span></div>
+            <div class="amplif-row"><span class="label">Fiabilité après</span><span class="amplif-val">{{ r.fiabilite }}</span></div>
+            <div class="amplif-facteurs">
+                <span>CSA {{ r.facteurs_amplification.csa }}</span>
+                <span>CBE {{ r.facteurs_amplification.cbe }}</span>
+                <span>VS {{ r.facteurs_amplification.vs }}</span>
+                <span>SDD {{ r.facteurs_amplification.sdd }}</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+
     {% if seuils_amplifies %}
     <div class="seuils-box">
         <div class="seuil-item">
