@@ -21,6 +21,7 @@ _partenariat = importlib.import_module("qfte_engine.15_partenariat")
 _amplificateur = importlib.import_module("qfte_engine.16_amplificateur")
 _aura = importlib.import_module("qfte_engine.22_aura")
 _oracle = importlib.import_module("qfte_engine.23_oracle")
+_chronos = importlib.import_module("qfte_engine.24_chronos")
 
 
 def analyser_match(match):
@@ -36,13 +37,14 @@ def analyser_match(match):
     data = _calibration.calibrer_probabilites(data)
     data = _copula.appliquer_copule(data)
     data = _scores.predire_scores(data)
-    data = _value.detector_value(data) if hasattr(_value, "detector_value") else _value.detecter_value(data)
+    data = _value.detecter_value(data)
     data = _risk.gerer_risques(data)
     data = _discipline.appliquer_discipline(data)
     data = _output.formater_recommandation(data)
     data = _partenariat.apposer_signature(data)
     data = _amplificateur.amplifier(data)
     data = _aura.calculer_aura(data)
-    data = _oracle.calculer_oracle(data)                       # 🔮 Couche ORACLE
+    data = _oracle.calculer_oracle(data)
+    data = _chronos.calculer_chronos(data)                    # 🎩 Couche CHRONOS
     data = _monitor.surveiller(data)
     return data
