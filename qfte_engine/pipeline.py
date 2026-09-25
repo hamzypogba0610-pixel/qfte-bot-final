@@ -22,6 +22,7 @@ _amplificateur = importlib.import_module("qfte_engine.16_amplificateur")
 _aura = importlib.import_module("qfte_engine.22_aura")
 _oracle = importlib.import_module("qfte_engine.23_oracle")
 _chronos = importlib.import_module("qfte_engine.24_chronos")
+_instinct = importlib.import_module("qfte_engine.25_instinct")
 
 
 def analyser_match(match):
@@ -45,6 +46,7 @@ def analyser_match(match):
     data = _amplificateur.amplifier(data)
     data = _aura.calculer_aura(data)
     data = _oracle.calculer_oracle(data)
-    data = _chronos.calculer_chronos(data)                    # 🎩 Couche CHRONOS
+    data = _chronos.calculer_chronos(data)
+    data = _instinct.calculer_instinct(data)                  # 💀 Couche INSTINCT
     data = _monitor.surveiller(data)
     return data
