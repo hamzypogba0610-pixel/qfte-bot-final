@@ -66,6 +66,13 @@
         .basket-title { color: #a3e635; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
         .tennis-box { background: linear-gradient(135deg, #140a00, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #fb923c; }
         .tennis-title { color: #fb923c; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
+        .hockey-box { background: linear-gradient(135deg, #0a1a1a, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #22d3ee; }
+        .hockey-title { color: #22d3ee; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
+        .hockey-periode-box { background: linear-gradient(135deg, #0a0a1f, #1a1a1a); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #06b6d4; }
+        .hockey-periode-title { color: #06b6d4; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
+        .hockey-periode-row { display: flex; justify-content: space-between; padding: 6px 8px; background: #0a0a0a; border-radius: 4px; margin-bottom: 4px; font-size: 12px; }
+        .hockey-periode-nom { color: #9ca3af; }
+        .hockey-periode-val { color: #22d3ee; font-weight: bold; font-family: monospace; }
         .elo-box { background: linear-gradient(135deg, #0a0a1a, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #818cf8; }
         .elo-title { color: #818cf8; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
         .momentum-box { background: linear-gradient(135deg, #1a0a14, #141414); padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ec4899; }
@@ -166,6 +173,8 @@
         <div class="ligne"><span class="label">Écart attendu :</span> {{ lambda_home }} pts (équipe 1)</div>
         {% elif match.sport == "tennis" %}
         <div class="ligne"><span class="label">P(gagne un set) :</span> {{ lambda_home }} (J1) - {{ lambda_away }} (J2)</div>
+        {% elif match.sport == "hockey" %}
+        <div class="ligne"><span class="label">Buts attendus (λ) :</span> {{ lambda_home }} - {{ lambda_away }}</div>
         {% else %}
         <div class="ligne"><span class="label">Buts attendus (λ) :</span> {{ lambda_home }} - {{ lambda_away }}</div>
         {% endif %}
@@ -180,6 +189,7 @@
             <span class="label">
                 {% if match.sport == "basket" %}Ligne totale estimée :
                 {% elif match.sport == "tennis" %}Total de jeux estimé :
+                {% elif match.sport == "hockey" %}Total buts référence :
                 {% else %}Total de buts (référence) :{% endif %}
             </span>
             {{ total_buts_comp }}
@@ -208,6 +218,16 @@
         <div class="ctx-row"><span class="label">σ jeux</span><span class="ctx-val">{{ tennis_config.sigma_jeux }}</span></div>
         <div class="ctx-row"><span class="label">P(gagne un set)</span><span class="ctx-val">{{ tennis_config.p_set }}</span></div>
         <div class="ctx-row"><span class="label">Nombre de sets prévus</span><span class="ctx-val">{{ tennis_config.nb_sets_moyen }}</span></div>
+    </div>
+    {% endif %}
+
+    {% if hockey_config %}
+    <div class="hockey-box">
+        <div class="hockey-title">🏒 Configuration Hockey</div>
+        <div class="ctx-row"><span class="label">Type détecté</span><span class="ctx-val">{{ hockey_config.type }}</span></div>
+        <div class="ctx-row"><span class="label">Ligne totale buts</span><span class="ctx-val">{{ hockey_config.ligne_totale }}</span></div>
+        <div class="ctx-row"><span class="label">Ligne période</span><span class="ctx-val">{{ hockey_config.ligne_periode }}</span></div>
+        <div class="ctx-row"><span class="label">Home Ice Advantage</span><span class="ctx-val">+{{ hockey_config.home_advantage }} buts</span></div>
     </div>
     {% endif %}
 
@@ -262,7 +282,9 @@
 
     {% if calendrier and calendrier.dom %}
     <div class="calendrier-box">
-        <div class="calendrier-title">📅 Impact Calendrier (football)</div>
+        <div class="calendrier-title">
+            {% if match.sport == "hockey" %}🏒 Impact Calendrier (hockey){% else %}📅 Impact Calendrier (football){% endif %}
+        </div>
         <h3 style="color:#3b82f6;">🏠 {{ match.equipe1 }} (domicile)</h3>
         <div class="ctx-row"><span class="label">Matchs 7j / 14j</span><span class="ctx-val">{{ calendrier.dom.details.matchs_7j }} / {{ calendrier.dom.details.matchs_14j }}</span></div>
         <div class="ctx-row"><span class="label">Jours de repos</span><span class="ctx-val">{{ calendrier.dom.details.jours_repos }} jours</span></div>
@@ -302,60 +324,57 @@
     </div>
     {% endif %}
 
-    {% if stats_avancees %}
-    <div class="stats-box">
-        <div class="stats-title">📊 Statistiques Avancées</div>
-        {% if stats_avancees.type == "football" %}
-        <div class="stats-grid">
-            <div class="stats-col">
-                <h4>🏠 {{ match.equipe1 }}</h4>
-                <div class="stats-row"><span class="stats-label">xG</span><span class="stats-val">{{ stats_avancees.dom.xg }}</span></div>
-                <div class="stats-row"><span class="stats-label">xGA</span><span class="stats-val">{{ stats_avancees.dom.xga }}</span></div>
-                <div class="stats-row"><span class="stats-label">xPTS</span><span class="stats-val">{{ stats_avancees.dom.xpts }}</span></div>
-                <div class="stats-row"><span class="stats-label">Régularité</span><span class="stats-val">{{ stats_avancees.dom.regularite }}</span></div>
-                <div class="stats-row"><span class="stats-label">Pression</span><span class="stats-val">{{ stats_avancees.dom.pression }}</span></div>
-                <div class="stats-row"><span class="stats-label">Overperf.</span><span class="stats-val {% if stats_avancees.dom.overperformance < 0 %}neg{% endif %}">{{ stats_avancees.dom.overperformance }}</span></div>
-            </div>
-            <div class="stats-col">
-                <h4>✈️ {{ match.equipe2 }}</h4>
-                <div class="stats-row"><span class="stats-label">xG</span><span class="stats-val">{{ stats_avancees.ext.xg }}</span></div>
-                <div class="stats-row"><span class="stats-label">xGA</span><span class="stats-val">{{ stats_avancees.ext.xga }}</span></div>
-                <div class="stats-row"><span class="stats-label">xPTS</span><span class="stats-val">{{ stats_avancees.ext.xpts }}</span></div>
-                <div class="stats-row"><span class="stats-label">Régularité</span><span class="stats-val">{{ stats_avancees.ext.regularite }}</span></div>
-                <div class="stats-row"><span class="stats-label">Pression</span><span class="stats-val">{{ stats_avancees.ext.pression }}</span></div>
-                <div class="stats-row"><span class="stats-label">Overperf.</span><span class="stats-val {% if stats_avancees.ext.overperformance < 0 %}neg{% endif %}">{{ stats_avancees.ext.overperformance }}</span></div>
-            </div>
+        
+{% if stats_avancees %}
+<div class="stats-box">
+    <div class="stats-title">📊 Statistiques Avancées</div>
+    {% if stats_avancees.type == "football" %}
+    <div class="stats-grid">
+        <div class="stats-col">
+            <h4>🏠 {{ match.equipe1 }}</h4>
+            <div class="stats-row"><span class="stats-label">xG</span><span class="stats-val">{{ stats_avancees.dom.xg }}</span></div>
+            <div class="stats-row"><span class="stats-label">xGA</span><span class="stats-val">{{ stats_avancees.dom.xga }}</span></div>
+            <div class="stats-row"><span class="stats-label">xPTS</span><span class="stats-val">{{ stats_avancees.dom.xpts }}</span></div>
+            <div class="stats-row"><span class="stats-label">Régularité</span><span class="stats-val">{{ stats_avancees.dom.regularite }}</span></div>
+            <div class="stats-row"><span class="stats-label">Pression</span><span class="stats-val">{{ stats_avancees.dom.pression }}</span></div>
+            <div class="stats-row"><span class="stats-label">Overperf.</span><span class="stats-val {% if stats_avancees.dom.overperformance < 0 %}neg{% endif %}">{{ stats_avancees.dom.overperformance }}</span></div>
         </div>
-        {% elif stats_avancees.type == "basket" %}
-        <div class="stats-grid">
-            <div class="stats-col">
-                <h4>🏠 {{ match.equipe1 }}</h4>
-                <div class="stats-row"><span class="stats-label">Net Rating</span><span class="stats-val {% if stats_avancees.dom.net_rating < 0 %}neg{% endif %}">{{ stats_avancees.dom.net_rating }}</span></div>
-                <div class="stats-row"><span class="stats-label">Pace-adjust.</span><span class="stats-val">{{ stats_avancees.dom.pace_adjusted }}</span></div>
-                <div class="stats-row"><span class="stats-label">Eff. Off.</span><span class="stats-val">{{ stats_avancees.dom.eff_off }}</span></div>
-                <div class="stats-row"><span class="stats-label">Eff. Déf.</span><span class="stats-val">{{ stats_avancees.dom.eff_def }}</span></div>
-                <div class="stats-row"><span class="stats-label">Clutch</span><span class="stats-val">{{ stats_avancees.dom.clutch }}</span></div>
-                <div class="stats-row"><span class="stats-label">Régularité</span><span class="stats-val">{{ stats_avancees.dom.regularite }}</span></div>
-            </div>
-            <div class="stats-col">
-                <h4>✈️ {{ match.equipe2 }}</h4>
-                <div class="stats-row"><span class="stats-label">Net Rating</span><span class="stats-val {% if stats_avancees.ext.net_rating < 0 %}neg{% endif %}">{{ stats_avancees.ext.net_rating }}</span></div>
-                <div class="stats-row"><span class="stats-label">Pace-adjust.</span><span class="stats-val">{{ stats_avancees.ext.pace_adjusted }}</span></div>
-                <div class="stats-row"><span class="stats-label">Eff. Off.</span><span class="stats-val">{{ stats_avancees.ext.eff_off }}</span></div>
-                <div class="stats-row"><span class="stats-label">Eff. Déf.</span><span class="stats-val">{{ stats_avancees.ext.eff_def }}</span></div>
-                <div class="stats-row"><span class="stats-label">Clutch</span><span class="stats-val">{{ stats_avancees.ext.clutch }}</span></div>
-                <div class="stats-row"><span class="stats-label">Régularité</span><span class="stats-val">{{ stats_avancees.ext.regularite }}</span></div>
-            </div>
+        <div class="stats-col">
+            <h4>✈️ {{ match.equipe2 }}</h4>
+            <div class="stats-row"><span class="stats-label">xG</span><span class="stats-val">{{ stats_avancees.ext.xg }}</span></div>
+            <div class="stats-row"><span class="stats-label">xGA</span><span class="stats-val">{{ stats_avancees.ext.xga }}</span></div>
+            <div class="stats-row"><span class="stats-label">xPTS</span><span class="stats-val">{{ stats_avancees.ext.xpts }}</span></div>
+            <div class="stats-row"><span class="stats-label">Régularité</span><span class="stats-val">{{ stats_avancees.ext.regularite }}</span></div>
+            <div class="stats-row"><span class="stats-label">Pression</span><span class="stats-val">{{ stats_avancees.ext.pression }}</span></div>
+            <div class="stats-row"><span class="stats-label">Overperf.</span><span class="stats-val {% if stats_avancees.ext.overperformance < 0 %}neg{% endif %}">{{ stats_avancees.ext.overperformance }}</span></div>
         </div>
-        {% elif stats_avancees.type == "tennis" %}
-        <div class="stats-grid">
-            <div class="stats-col">
-                <h4>🎾 {{ match.equipe1 }}</h4>
-                <div class="stats-row"><span class="stats-label">Service Idx</span><span class="stats-val">{{ stats_avancees.dom.service_index }}</span></div>
-                <div class="stats-row"><span class="stats-label">Return Idx</span><span class="stats-val">{{ stats_avancees.dom.return_index }}</span></div>
-                <div class="stats-row"><span class="stats-label">Dominance</span><span class="stats-val">{{ stats_avancees.dom.dominance_ratio }}</span></div>
-                <div class="stats-row"><span class="stats-label">Surface Idx</span><span class="stats-val {% if stats_avancees.dom.surface_index < 0 %}neg{% else %}neutre{% endif %}">{{ stats_avancees.dom.surface_index }}</span
-                                                                                                                                                                                                                                 
+    </div>
+    {% elif stats_avancees.type == "basket" %}
+    <div class="stats-grid">
+        <div class="stats-col">
+            <h4>🏠 {{ match.equipe1 }}</h4>
+            <div class="stats-row"><span class="stats-label">Net Rating</span><span class="stats-val {% if stats_avancees.dom.net_rating < 0 %}neg{% endif %}">{{ stats_avancees.dom.net_rating }}</span></div>
+            <div class="stats-row"><span class="stats-label">Pace-adjust.</span><span class="stats-val">{{ stats_avancees.dom.pace_adjusted }}</span></div>
+            <div class="stats-row"><span class="stats-label">Eff. Off.</span><span class="stats-val">{{ stats_avancees.dom.eff_off }}</span></div>
+            <div class="stats-row"><span class="stats-label">Eff. Déf.</span><span class="stats-val">{{ stats_avancees.dom.eff_def }}</span></div>
+            <div class="stats-row"><span class="stats-label">Clutch</span><span class="stats-val">{{ stats_avancees.dom.clutch }}</span></div>
+            <div class="stats-row"><span class="stats-label">Régularité</span><span class="stats-val">{{ stats_avancees.dom.regularite }}</span></div>
+        </div>
+        <div class="stats-col">
+            <h4>✈️ {{ match.equipe2 }}</h4>
+            <div class="stats-row"><span class="stats-label">Net Rating</span><span class="stats-val {% if stats_avancees.ext.net_rating < 0 %}neg{% endif %}">{{ stats_avancees.ext.net_rating }}</span></div>
+            <div class="stats-row"><span class="stats-label">Pace-adjust.</span><span class="stats-val">{{ stats_avancees.ext.pace_adjusted }}</span></div>
+            <div class="stats-row"><span class="stats-label">Eff. Off.</span><span class="stats-val">{{ stats_avancees.ext.eff_off }}</span></div>
+            <div class="stats-row"><span class="stats-label">Eff. Déf.</span><span class="stats-val">{{ stats_avancees.ext.eff_def }}</span></div>
+            <div class="stats-row"><span class="stats-label">Clutch</span><span class="stats-val">{{ stats_avancees.ext.clutch }}</span></div>
+            <div class="stats-row"><span class="stats-label">Régularité</span><span class="stats-val">{{ stats_avancees.ext.regularite }}</span></div>
+        </div>
+    </div>
+    {% elif stats_avancees.type == "tennis" %}
+    <div class="stats-grid">
+        <div class="stats-col">
+            <h4>🎾 {{ match.equipe1 }}</h4>
+            <div class="stats-row"><span class="stats-label">Service Idx</span><span class="stats-val">{{ stats_avancees.dom.service_index }}</span></div>
             <div class="stats-row"><span class="stats-label">Return Idx</span><span class="stats-val">{{ stats_avancees.dom.return_index }}</span></div>
             <div class="stats-row"><span class="stats-label">Dominance</span><span class="stats-val">{{ stats_avancees.dom.dominance_ratio }}</span></div>
             <div class="stats-row"><span class="stats-label">Surface Idx</span><span class="stats-val {% if stats_avancees.dom.surface_index < 0 %}neg{% else %}neutre{% endif %}">{{ stats_avancees.dom.surface_index }}</span></div>
@@ -369,6 +388,47 @@
             <div class="stats-row"><span class="stats-label">Surface Idx</span><span class="stats-val {% if stats_avancees.ext.surface_index < 0 %}neg{% else %}neutre{% endif %}">{{ stats_avancees.ext.surface_index }}</span></div>
             <div class="stats-row"><span class="stats-label">Régularité</span><span class="stats-val">{{ stats_avancees.ext.regularite }}</span></div>
         </div>
+    </div>
+    {% elif stats_avancees.type == "hockey" %}
+    <div class="stats-grid">
+        <div class="stats-col">
+            <h4>🏠 {{ match.equipe1 }}</h4>
+            <div class="stats-row"><span class="stats-label">Corsi</span><span class="stats-val">{{ stats_avancees.dom.corsi }}%</span></div>
+            <div class="stats-row"><span class="stats-label">Fenwick</span><span class="stats-val">{{ stats_avancees.dom.fenwick }}%</span></div>
+            <div class="stats-row"><span class="stats-label">PDO</span><span class="stats-val">{{ stats_avancees.dom.pdo }}</span></div>
+            <div class="stats-row"><span class="stats-label">xG</span><span class="stats-val">{{ stats_avancees.dom.xg }}</span></div>
+            <div class="stats-row"><span class="stats-label">xGA</span><span class="stats-val">{{ stats_avancees.dom.xga }}</span></div>
+            <div class="stats-row"><span class="stats-label">Power Index</span><span class="stats-val">{{ stats_avancees.dom.power_index }}</span></div>
+            <div class="stats-row"><span class="stats-label">Régularité</span><span class="stats-val">{{ stats_avancees.dom.regularite }}</span></div>
+        </div>
+        <div class="stats-col">
+            <h4>✈️ {{ match.equipe2 }}</h4>
+            <div class="stats-row"><span class="stats-label">Corsi</span><span class="stats-val">{{ stats_avancees.ext.corsi }}%</span></div>
+            <div class="stats-row"><span class="stats-label">Fenwick</span><span class="stats-val">{{ stats_avancees.ext.fenwick }}%</span></div>
+            <div class="stats-row"><span class="stats-label">PDO</span><span class="stats-val">{{ stats_avancees.ext.pdo }}</span></div>
+            <div class="stats-row"><span class="stats-label">xG</span><span class="stats-val">{{ stats_avancees.ext.xg }}</span></div>
+            <div class="stats-row"><span class="stats-label">xGA</span><span class="stats-val">{{ stats_avancees.ext.xga }}</span></div>
+            <div class="stats-row"><span class="stats-label">Power Index</span><span class="stats-val">{{ stats_avancees.ext.power_index }}</span></div>
+            <div class="stats-row"><span class="stats-label">Régularité</span><span class="stats-val">{{ stats_avancees.ext.regularite }}</span></div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if hockey_periodes and hockey_periodes.toutes %}
+<div class="hockey-periode-box">
+    <div class="hockey-periode-title">🏒 Analyse par période</div>
+    {% for p in hockey_periodes.toutes %}
+    <div class="hockey-periode-row">
+        <span class="hockey-periode-nom">{{ p.nom }} — λ {{ p.lambda_h }} / {{ p.lambda_a }}</span>
+        <span class="hockey-periode-val">Over {{ (p.proba_over * 100) | round(1) }}%</span>
+    </div>
+    {% endfor %}
+    {% if hockey_periodes.meilleure %}
+    <div class="ctx-row" style="margin-top:8px; padding-top:8px; border-top:1px solid #2a2a2a;">
+        <span class="label">⭐ Meilleure période</span>
+        <span class="ctx-val">{{ hockey_periodes.meilleure.nom }} — {{ hockey_periodes.meilleure.selection }} (EV {{ (hockey_periodes.meilleure.ev_over * 100) | round(2) if hockey_periodes.meilleure.selection == "Over" else (hockey_periodes.meilleure.ev_under * 100) | round(2) }}%)</span>
     </div>
     {% endif %}
 </div>
@@ -414,57 +474,28 @@
 </div>
 {% endif %}
 
-        
 {% if oracle %}
 <div class="oracle-box">
     <div class="oracle-title">🔮 COUCHE ORACLE — Monte Carlo 10 000 simulations</div>
-
     <div class="oracle-score-container">
         <div class="oracle-score">{{ (oracle.metriques.proba_simulee * 100) | round(1) }}%</div>
         <div class="oracle-subtitle">Probabilité simulée (J1 gagne)</div>
     </div>
-
     <div class="oracle-metrics">
-        <div class="oracle-metric">
-            <span class="oracle-metric-label">IC 95% bas</span>
-            <span class="oracle-metric-val">{{ (oracle.metriques.ic_bas * 100) | round(1) }}%</span>
-        </div>
-        <div class="oracle-metric">
-            <span class="oracle-metric-label">IC 95% haut</span>
-            <span class="oracle-metric-val">{{ (oracle.metriques.ic_haut * 100) | round(1) }}%</span>
-        </div>
-        <div class="oracle-metric">
-            <span class="oracle-metric-label">Écart-type</span>
-            <span class="oracle-metric-val">{{ oracle.metriques.ecart_type }}</span>
-        </div>
-        <div class="oracle-metric">
-            <span class="oracle-metric-label">VaR 5%</span>
-            <span class="oracle-metric-val">{{ oracle.metriques.var_5 }}</span>
-        </div>
-        <div class="oracle-metric">
-            <span class="oracle-metric-label">CVaR 5%</span>
-            <span class="oracle-metric-val">{{ oracle.metriques.cvar_5 }}</span>
-        </div>
-        <div class="oracle-metric">
-            <span class="oracle-metric-label">Meilleur cas</span>
-            <span class="oracle-metric-val">{{ oracle.metriques.meilleur }}</span>
-        </div>
-        <div class="oracle-metric">
-            <span class="oracle-metric-label">Victoires nettes</span>
-            <span class="oracle-metric-val">{{ (oracle.metriques.victoires_nettes * 100) | round(1) }}%</span>
-        </div>
-        <div class="oracle-metric">
-            <span class="oracle-metric-label">Défaites nettes</span>
-            <span class="oracle-metric-val">{{ (oracle.metriques.defaites_nettes * 100) | round(1) }}%</span>
-        </div>
+        <div class="oracle-metric"><span class="oracle-metric-label">IC 95% bas</span><span class="oracle-metric-val">{{ (oracle.metriques.ic_bas * 100) | round(1) }}%</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">IC 95% haut</span><span class="oracle-metric-val">{{ (oracle.metriques.ic_haut * 100) | round(1) }}%</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">Écart-type</span><span class="oracle-metric-val">{{ oracle.metriques.ecart_type }}</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">VaR 5%</span><span class="oracle-metric-val">{{ oracle.metriques.var_5 }}</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">CVaR 5%</span><span class="oracle-metric-val">{{ oracle.metriques.cvar_5 }}</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">Meilleur cas</span><span class="oracle-metric-val">{{ oracle.metriques.meilleur }}</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">Victoires nettes</span><span class="oracle-metric-val">{{ (oracle.metriques.victoires_nettes * 100) | round(1) }}%</span></div>
+        <div class="oracle-metric"><span class="oracle-metric-label">Défaites nettes</span><span class="oracle-metric-val">{{ (oracle.metriques.defaites_nettes * 100) | round(1) }}%</span></div>
     </div>
-
     <div class="oracle-histo">
         {% for barre in oracle.histogramme %}
         <div class="oracle-bar" style="height: {{ barre }}%;"></div>
         {% endfor %}
     </div>
-
     <div class="oracle-interpretation">{{ oracle.interpretation }}</div>
     <div class="oracle-stabilite">{{ oracle.stabilite_texte }} · Stabilité : {{ oracle.metriques.stabilite }} / 100</div>
     <div class="oracle-meta">
@@ -474,67 +505,68 @@
 </div>
 {% endif %}
 
-{% if contexte %}
-<div class="match">
-    <h2>🧠 Analyse contextuelle</h2>
-
-    {% if contexte.scores and contexte.scores.dom_marques is not none %}
-    <h3>
-        {% if match.sport == 'basket' %}🏀 Moyennes de points (scores réels)
-        {% elif match.sport == 'tennis' %}🎾 Moyennes de jeux (scores réels)
-        {% else %}⚽ Moyennes de buts (scores réels){% endif %}
-    </h3>
-    <div class="ctx-row">
-        <span class="label">{{ match.equipe1 }} — marque à domicile</span>
-        <span class="ctx-val">{{ contexte.scores.dom_marques }}</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">{{ match.equipe1 }} — encaisse à domicile</span>
-        <span class="ctx-val">{{ contexte.scores.dom_encaisses }}</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">{{ match.equipe2 }} — marque à l'extérieur</span>
-        <span class="ctx-val">{{ contexte.scores.ext_marques }}</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">{{ match.equipe2 }} — encaisse à l'extérieur</span>
-        <span class="ctx-val">{{ contexte.scores.ext_encaisses }}</span>
-    </div>
-    {% endif %}
-
-    <h3>📈 Forme</h3>
-    <div class="ctx-row">
-        <span class="label">Forme {{ match.equipe1 }} (dom. finale)</span>
-        <span class="ctx-val {% if contexte.forme.dom_finale < 0 %}neg{% elif contexte.forme.dom_finale == 0 %}neutre{% endif %}">{{ contexte.forme.dom_finale }}</span>
-    </div>
-    <div class="ctx-row">
-        <span class="label">Forme {{ match.equipe2 }} (ext. finale)</span>
-        <span class="ctx-val {% if contexte.forme.ext_finale < 0 %}neg{% elif contexte.forme.ext_finale == 0 %}neutre{% endif %}">{{ contexte.forme.ext_finale }}</span>
-    </div>
-
-    {% if contexte.h2h and contexte.h2h.n > 0 %}
-    <h3>⚔️ Confrontations directes ({{ contexte.h2h.n }} matchs)</h3>
-    <div class="ctx-row"><span class="label">Moyenne {{ 'points' if match.sport == 'basket' else ('jeux' if match.sport == 'tennis' else 'buts') }} H2H</span><span class="ctx-val">{{ contexte.h2h.moy_buts }}</span></div>
-    <div class="ctx-row"><span class="label">Victoires {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.h2h.v_dom }}</span></div>
-    <div class="ctx-row"><span class="label">Nuls</span><span class="ctx-val neutre">{{ contexte.h2h.nuls }}</span></div>
-    <div class="ctx-row"><span class="label">Victoires {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.h2h.v_ext }}</span></div>
-    <div class="ctx-row"><span class="label">Domination</span><span class="ctx-val">{{ contexte.h2h.domine }}</span></div>
-    {% endif %}
-
-    {% if contexte.cotes and contexte.cotes.overround %}
-    <h3>💹 Cotes des 2 équipes</h3>
-    <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_1 }}</span></div>
-    <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_2 }}</span></div>
-    <div class="ctx-row"><span class="label">Proba implicite Nul</span><span class="ctx-val neutre">{{ contexte.cotes.proba_implicite_nul }}</span></div>
-    <div class="ctx-row"><span class="label">Marge bookmaker (2 issues)</span><span class="ctx-val">{{ contexte.cotes.marge_book }}%</span></div>
-    <div class="ctx-row"><span class="label">Mouvement {{ match.equipe1 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_1 * 100) | round(2) }}%</span></div>
-    <div class="ctx-row"><span class="label">Mouvement {{ match.equipe2 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_2 * 100) | round(2) }}%</span></div>
-    <div class="ctx-row"><span class="label">Signal sharp détecté</span><span class="ctx-val">{{ contexte.cotes.sharp_signal }}</span></div>
-    {% endif %}
-</div>
-{% endif %}
-
         
+    {% if contexte %}
+    <div class="match">
+        <h2>🧠 Analyse contextuelle</h2>
+
+        {% if contexte.scores and contexte.scores.dom_marques is not none %}
+        <h3>
+            {% if match.sport == 'basket' %}🏀 Moyennes de points (scores réels)
+            {% elif match.sport == 'tennis' %}🎾 Moyennes de jeux (scores réels)
+            {% elif match.sport == 'hockey' %}🏒 Moyennes de buts (scores réels)
+            {% else %}⚽ Moyennes de buts (scores réels){% endif %}
+        </h3>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe1 }} — marque à domicile</span>
+            <span class="ctx-val">{{ contexte.scores.dom_marques }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe1 }} — encaisse à domicile</span>
+            <span class="ctx-val">{{ contexte.scores.dom_encaisses }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe2 }} — marque à l'extérieur</span>
+            <span class="ctx-val">{{ contexte.scores.ext_marques }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">{{ match.equipe2 }} — encaisse à l'extérieur</span>
+            <span class="ctx-val">{{ contexte.scores.ext_encaisses }}</span>
+        </div>
+        {% endif %}
+
+        <h3>📈 Forme</h3>
+        <div class="ctx-row">
+            <span class="label">Forme {{ match.equipe1 }} (dom. finale)</span>
+            <span class="ctx-val {% if contexte.forme.dom_finale < 0 %}neg{% elif contexte.forme.dom_finale == 0 %}neutre{% endif %}">{{ contexte.forme.dom_finale }}</span>
+        </div>
+        <div class="ctx-row">
+            <span class="label">Forme {{ match.equipe2 }} (ext. finale)</span>
+            <span class="ctx-val {% if contexte.forme.ext_finale < 0 %}neg{% elif contexte.forme.ext_finale == 0 %}neutre{% endif %}">{{ contexte.forme.ext_finale }}</span>
+        </div>
+
+        {% if contexte.h2h and contexte.h2h.n > 0 %}
+        <h3>⚔️ Confrontations directes ({{ contexte.h2h.n }} matchs)</h3>
+        <div class="ctx-row"><span class="label">Moyenne {{ 'points' if match.sport == 'basket' else ('jeux' if match.sport == 'tennis' else 'buts') }} H2H</span><span class="ctx-val">{{ contexte.h2h.moy_buts }}</span></div>
+        <div class="ctx-row"><span class="label">Victoires {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.h2h.v_dom }}</span></div>
+        <div class="ctx-row"><span class="label">Nuls</span><span class="ctx-val neutre">{{ contexte.h2h.nuls }}</span></div>
+        <div class="ctx-row"><span class="label">Victoires {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.h2h.v_ext }}</span></div>
+        <div class="ctx-row"><span class="label">Domination</span><span class="ctx-val">{{ contexte.h2h.domine }}</span></div>
+        {% endif %}
+
+        {% if contexte.cotes and contexte.cotes.overround %}
+        <h3>💹 Cotes des 2 équipes</h3>
+        <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe1 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_1 }}</span></div>
+        <div class="ctx-row"><span class="label">Proba implicite {{ match.equipe2 }}</span><span class="ctx-val">{{ contexte.cotes.proba_implicite_2 }}</span></div>
+        <div class="ctx-row"><span class="label">Proba implicite Nul</span><span class="ctx-val neutre">{{ contexte.cotes.proba_implicite_nul }}</span></div>
+        <div class="ctx-row"><span class="label">Marge bookmaker (2 issues)</span><span class="ctx-val">{{ contexte.cotes.marge_book }}%</span></div>
+        <div class="ctx-row"><span class="label">Mouvement {{ match.equipe1 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_1 * 100) | round(2) }}%</span></div>
+        <div class="ctx-row"><span class="label">Mouvement {{ match.equipe2 }}</span><span class="ctx-val">{{ (contexte.cotes.mouvement_2 * 100) | round(2) }}%</span></div>
+        <div class="ctx-row"><span class="label">Signal sharp détecté</span><span class="ctx-val">{{ contexte.cotes.sharp_signal }}</span></div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <div class="match">
         <h2>Décision finale</h2>
         <div class="ligne"><strong>{{ decision }}</strong></div>
@@ -546,6 +578,8 @@
         <h2>🎯 Marges et scores projetés</h2>
         {% elif match.sport == "tennis" %}
         <h2>🎯 Scores en sets prédits</h2>
+        {% elif match.sport == "hockey" %}
+        <h2>🎯 Scores prédits (hockey)</h2>
         {% else %}
         <h2>🎯 Scores prédits (Dixon-Coles)</h2>
         {% endif %}
@@ -554,6 +588,7 @@
             <span class="label">
                 {% if match.sport == "basket" %}Score à la mi-temps projeté :
                 {% elif match.sport == "tennis" %}Score après le 1er set :
+                {% elif match.sport == "hockey" %}Score après 1ère période :
                 {% else %}Score à la mi-temps le plus probable :{% endif %}
             </span>
         </div>
@@ -562,7 +597,6 @@
                 <div class="score-val">{{ top_ht_score.score }}</div>
                 <div class="label">
                     {% if match.sport == "basket" %}Projection
-                    {% elif match.sport == "tennis" %}Proba : {{ (top_ht_score.proba * 100) | round(1) }}%
                     {% else %}Proba : {{ (top_ht_score.proba * 100) | round(1) }}%{% endif %}
                 </div>
             </div>
@@ -572,6 +606,7 @@
             <span class="label">
                 {% if match.sport == "basket" %}2 marges de victoire les plus probables :
                 {% elif match.sport == "tennis" %}2 scores en sets les plus probables :
+                {% elif match.sport == "hockey" %}2 scores exacts les plus probables :
                 {% else %}2 scores exacts les plus probables :{% endif %}
             </span>
         </div>
@@ -587,7 +622,9 @@
 
     {% if auto_ou %}
     <div class="auto-ou-box">
-        <div class="auto-ou-title">🎯 Choix automatique Over/Under</div>
+        <div class="auto-ou-title">
+            {% if match.sport == "hockey" %}🏒 Choix automatique Over/Under (Total Buts){% else %}🎯 Choix automatique Over/Under{% endif %}
+        </div>
         <div class="ctx-row">
             <span class="label">EV Over</span>
             <span class="ctx-val {% if auto_ou.ev_over < 0 %}neg{% endif %}">{{ (auto_ou.ev_over * 100) | round(2) }}%</span>
@@ -769,4 +806,4 @@
     <a href="/" class="back">← Nouvelle analyse</a>
     <a href="/dashboard" class="back back-alt">📊 Dashboard</a>
 </body>
-</html>
+                    </html>
