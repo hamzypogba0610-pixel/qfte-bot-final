@@ -21,6 +21,8 @@
         .bloc-calendrier h3 { color: #3b82f6; margin-top: 0; font-size: 14px; }
         .bloc-calendrier-basket { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #a3e635; }
         .bloc-calendrier-basket h3 { color: #a3e635; margin-top: 0; font-size: 14px; }
+        .bloc-calendrier-hockey { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #22d3ee; }
+        .bloc-calendrier-hockey h3 { color: #22d3ee; margin-top: 0; font-size: 14px; }
         .coche-bloc { margin-top: 10px; }
     </style>
 </head>
@@ -35,10 +37,11 @@
             <option value="football">Football</option>
             <option value="basket">Basket</option>
             <option value="tennis">Tennis</option>
+            <option value="hockey">Hockey sur glace</option>
         </select>
 
         <label>Compétition</label>
-        <input type="text" name="competition" placeholder="Ex: Ligue 1 / NBA / ATP" required>
+        <input type="text" name="competition" placeholder="Ex: Ligue 1 / NBA / ATP / NHL" required>
 
         <div id="bloc_surface" style="display: none;">
             <label>🎾 Surface (tennis uniquement)</label>
@@ -73,7 +76,7 @@
         </div>
 
         <div id="bloc_calendrier" style="display: none;">
-            <h2>📅 Calendrier (football uniquement)</h2>
+            <h2 id="titre_calendrier">📅 Calendrier</h2>
             <div class="aide" style="margin-bottom: 10px;">
                 Impacte la fatigue et la rotation probable des effectifs.
             </div>
@@ -82,16 +85,16 @@
                 <h3>🏠 Équipe 1 (domicile)</h3>
 
                 <label>Matchs joués sur les 7 derniers jours</label>
-                <input type="number" name="matchs_7j_dom" value="0" min="0" max="5">
+                <input type="number" name="matchs_7j_dom" value="0" min="0" max="7">
 
                 <label>Matchs joués sur les 14 derniers jours</label>
-                <input type="number" name="matchs_14j_dom" value="0" min="0" max="10">
+                <input type="number" name="matchs_14j_dom" value="0" min="0" max="14">
 
                 <label>Jours de repos avant ce match</label>
                 <input type="number" name="jours_repos_dom" value="7" min="0" max="30">
 
                 <label>Compétition du match suivant (optionnel)</label>
-                <input type="text" name="competition_suivante_dom" placeholder="Ex: Champions League">
+                <input type="text" name="competition_suivante_dom" placeholder="Ex: Champions League / NHL Playoffs">
 
                 <label>Jours avant le match suivant</label>
                 <input type="number" name="jours_avant_suivant_dom" value="7" min="0" max="30">
@@ -101,16 +104,16 @@
                 <h3>✈️ Équipe 2 (extérieur)</h3>
 
                 <label>Matchs joués sur les 7 derniers jours</label>
-                <input type="number" name="matchs_7j_ext" value="0" min="0" max="5">
+                <input type="number" name="matchs_7j_ext" value="0" min="0" max="7">
 
                 <label>Matchs joués sur les 14 derniers jours</label>
-                <input type="number" name="matchs_14j_ext" value="0" min="0" max="10">
+                <input type="number" name="matchs_14j_ext" value="0" min="0" max="14">
 
                 <label>Jours de repos avant ce match</label>
                 <input type="number" name="jours_repos_ext" value="7" min="0" max="30">
 
                 <label>Compétition du match suivant (optionnel)</label>
-                <input type="text" name="competition_suivante_ext" placeholder="Ex: Champions League">
+                <input type="text" name="competition_suivante_ext" placeholder="Ex: Champions League / NHL Playoffs">
 
                 <label>Jours avant le match suivant</label>
                 <input type="number" name="jours_avant_suivant_ext" value="7" min="0" max="30">
@@ -164,8 +167,9 @@
                     Voyage long (côte à côte)
                 </label>
             </div>
-        </div>
+                </div>
 
+        
         <h2>📊 Cotes 1X2 (les 2 équipes)</h2>
         <label id="label_cote_ouv1">Cote Équipe 1 — Ouverture / Fermeture</label>
         <div class="row">
@@ -226,9 +230,8 @@
         <input type="number" name="volume" value="50000" required>
 
         <button type="submit">Analyser</button>
-                    </form>
+    </form>
 
-    
     <script>
         const selectSport = document.getElementById("select_sport");
         const blocSurface = document.getElementById("bloc_surface");
@@ -257,6 +260,7 @@
             const ov = document.getElementById("label_over25");
             const bt = document.getElementById("label_btts");
             const aideSd = document.getElementById("aide_scores_dom");
+            const titreCal = document.getElementById("titre_calendrier");
 
             if (sport === "tennis") {
                 blocSurface.style.display = "block";
@@ -306,11 +310,37 @@
                 ov.textContent = "Cote Total Points Over/Under";
                 bt.textContent = "Cote Money Line Domicile";
                 aideSd.textContent = "Format : points_pour-points_contre (ex: 108-102)";
+            } else if (sport === "hockey") {
+                blocSurface.style.display = "none";
+                blocFatigue.style.display = "none";
+                blocCalendrier.style.display = "block";
+                blocCalendrierBasket.style.display = "none";
+                titreCal.textContent = "🏒 Calendrier Hockey";
+                eq1.textContent = "Équipe 1 (à domicile)";
+                eq2.textContent = "Équipe 2 (à l'extérieur)";
+                c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
+                c2.textContent = "Cote Équipe 2 — Ouverture / Fermeture";
+                t1.textContent = "📈 Équipe 1 — à domicile";
+                t2.textContent = "📉 Équipe 2 — à l'extérieur";
+                fd.textContent = "5 derniers résultats à domicile (V/N/D)";
+                sd.textContent = "5 derniers scores à domicile";
+                fdg.textContent = "5 derniers résultats globaux (V/N/D)";
+                sdg.textContent = "5 derniers scores globaux";
+                fe.textContent = "5 derniers résultats à l'extérieur (V/N/D)";
+                se.textContent = "5 derniers scores à l'extérieur";
+                feg.textContent = "5 derniers résultats globaux (V/N/D)";
+                seg.textContent = "5 derniers scores globaux";
+                h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
+                ah.textContent = "Cote Puck Line -1.5";
+                ov.textContent = "Cote Total Buts Over/Under (ex: 5.5)";
+                bt.textContent = "Cote ML ou Total Période (info)";
+                aideSd.textContent = "Format : buts_pour-buts_contre (ex: 4-2, 3-1)";
             } else {
                 blocSurface.style.display = "none";
                 blocFatigue.style.display = "none";
                 blocCalendrier.style.display = "block";
                 blocCalendrierBasket.style.display = "none";
+                titreCal.textContent = "📅 Calendrier Football";
                 eq1.textContent = "Équipe 1 (à domicile)";
                 eq2.textContent = "Équipe 2 (à l'extérieur)";
                 c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
