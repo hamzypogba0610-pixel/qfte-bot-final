@@ -3,7 +3,7 @@ Couche AURA — Analyse Universelle de Robustesse et d'Attribution
 QFTE V23.0.
 
 Couche méta qui agrège toutes les autres couches en un score unique 0-100,
-adapté aux 3 sports, avec attribution, détection de conflits et signature.
+adapté aux 4 sports, avec attribution, détection de conflits et signature.
 
 AURA = 4 signaux composites :
 - A : Forces contextuelles (forme, H2H, momentum, fatigue, calendrier)
@@ -22,6 +22,7 @@ POIDS_SPORT = {
     "football": {"A": 0.30, "U": 0.20, "R": 0.30, "AMP": 0.20},
     "basket":   {"A": 0.25, "U": 0.20, "R": 0.30, "AMP": 0.25},
     "tennis":   {"A": 0.35, "U": 0.15, "R": 0.30, "AMP": 0.20},
+    "hockey":   {"A": 0.28, "U": 0.20, "R": 0.30, "AMP": 0.22},
 }
 
 
@@ -33,7 +34,6 @@ def _borne(x, mini=0.0, maxi=1.0):
 # SIGNAL A — Forces contextuelles
 # ============================================================
 def _signal_contextuel(data):
-    """Agrège les signaux contextuels en un score 0-1."""
     scores = []
     poids = []
 
@@ -41,14 +41,12 @@ def _signal_contextuel(data):
     forme = contexte.get("forme", {})
     h2h = contexte.get("h2h", {})
 
-    # Forme nette (écart entre les 2 équipes)
     f_dom = abs(float(forme.get("dom_finale", 0)))
     f_ext = abs(float(forme.get("ext_finale", 0)))
     forme_clarte = _borne((f_dom + f_ext) / 2.0)
     scores.append(forme_clarte)
     poids.append(0.25)
 
-    # H2H clarté
     if h2h.get("n", 0) >= 3:
         v_dom = h2h.get("v_dom", 0)
         v_ext = h2h.get("v_ext", 0)
@@ -60,7 +58,6 @@ def _signal_contextuel(data):
     scores.append(h2h_net)
     poids.append(0.20)
 
-    # Momentum (tennis) ou calendrier impact (foot)
     momentum = data.get("momentum_info", {})
     if momentum:
         diff = abs(float(momentum.get("diff", 0)))
@@ -79,7 +76,6 @@ def _signal_contextuel(data):
         scores.append(_borne(diff / 8.0))
         poids.append(0.20)
 
-    # Fatigue (tennis)
     fatigue = data.get("fatigue_info", {})
     if fatigue:
         diff = abs(float(fatigue.get("diff", 0)))
@@ -97,23 +93,19 @@ def _signal_contextuel(data):
 # SIGNAL U — Qualité des données
 # ============================================================
 def _signal_qualite(data):
-    """Agrège la qualité des données en un score 0-1."""
     scores = []
     poids = []
 
-    # Score de validation des cotes
     validation = data.get("validation", {})
     val_score = float(validation.get("score", 70)) / 100.0
     scores.append(val_score)
     poids.append(0.40)
 
-    # Liquidité
     volume = float(data.get("volume", 0))
     liquidite = _borne(volume / 200000)
     scores.append(liquidite)
     poids.append(0.30)
 
-    # Cohérence des cotes (via contexte)
     contexte = data.get("contexte", {})
     cotes_ctx = contexte.get("cotes", {})
     if cotes_ctx:
@@ -134,34 +126,27 @@ def _signal_qualite(data):
 # SIGNAL R — Robustesse du modèle
 # ============================================================
 def _signal_robustesse(data):
-    """Agrège la robustesse du modèle en un score 0-1."""
     scores = []
     poids = []
 
-    # BMA actif ?
     bma_actif = bool(data.get("bma_actif", False))
     scores.append(1.0 if bma_actif else 0.4)
     poids.append(0.20)
 
-    # Calibrateurs actifs (nombre)
     calib_actifs = int(data.get("calibrateurs_actifs", 0))
     scores.append(_borne(calib_actifs / 3.0))
     poids.append(0.15)
 
-    # Attention contextuelle (qualité moyenne des poids)
     attention = data.get("attention", {})
     if attention:
-        # Plus les poids sont "concentrés", plus l'attention est nette
         max_poids = max(attention.values()) if attention else 0.33
         scores.append(_borne(max_poids / 0.6))
         poids.append(0.15)
 
-    # Copula (corrélations apprises)
     copula_apprises = int(data.get("copula_correlations_apprises", 0))
     scores.append(_borne(copula_apprises / 3.0))
     poids.append(0.15)
 
-    # Fiabilité moyenne des recommandations
     recos = data.get("recommandations", [])
     fiabilites = []
     for r in recos:
@@ -174,7 +159,6 @@ def _signal_robustesse(data):
         scores.append(_borne(fiab_moy))
         poids.append(0.20)
 
-    # Largeur des intervalles de confiance (plus étroit = meilleur)
     largeurs = []
     for r in recos:
         ic = r.get("intervalle_confiance")
@@ -197,17 +181,14 @@ def _signal_robustesse(data):
 # SIGNAL AMP — Amplification
 # ============================================================
 def _signal_amplification(data):
-    """Agrège l'amplification (Couche A + ICP) en un score 0-1."""
     scores = []
     poids = []
 
-    # ICP (Couche Σ)
     signature = data.get("signature", {})
     icp = float(signature.get("icp", 50))
     scores.append(_borne(icp / 100.0))
     poids.append(0.50)
 
-    # Couche A — facteurs d'amplification
     recos = data.get("recommandations", [])
     facteurs_utilises = 0
     for r in recos:
@@ -218,7 +199,6 @@ def _signal_amplification(data):
         scores.append(_borne(facteurs_utilises / len(recos)))
         poids.append(0.30)
 
-    # Décision finale (bonus si ATTAQUE)
     decision = data.get("decision", "ÉVITER")
     if decision in ("ATTAQUE FORTE", "ATTAQUE"):
         scores.append(1.0)
@@ -240,29 +220,21 @@ def _signal_amplification(data):
 # DÉTECTION DES CONFLITS
 # ============================================================
 def _detecter_conflits(data, signaux):
-    """
-    Détecte les conflits entre couches.
-    Retourne une liste d'alertes.
-    """
     alertes = []
 
     decision = data.get("decision", "ÉVITER")
     validation = data.get("validation", {})
     val_niveau = validation.get("niveau", "OK")
 
-    # Conflit 1 : décision ATTAQUE mais validation DANGER
     if decision in ("ATTAQUE FORTE", "ATTAQUE") and val_niveau == "DANGER":
         alertes.append("⚠️ Décision offensive mais validation des cotes en DANGER")
 
-    # Conflit 2 : décision ÉVITER mais signal contextuel fort
     if decision == "ÉVITER" and signaux["A"] >= 0.75:
         alertes.append("⚠️ Décision ÉVITER alors que le contexte est très favorable")
 
-    # Conflit 3 : forte amplification mais robustesse faible
     if signaux["AMP"] >= 0.70 and signaux["R"] <= 0.40:
         alertes.append("⚠️ Amplification forte mais robustesse du modèle faible")
 
-    # Conflit 4 : qualité des données faible mais confiance élevée
     if signaux["U"] <= 0.35 and decision in ("ATTAQUE FORTE", "ATTAQUE"):
         alertes.append("⚠️ Données de faible qualité mais décision offensive")
 
@@ -273,19 +245,9 @@ def _detecter_conflits(data, signaux):
 # CALCUL GLOBAL AURA
 # ============================================================
 def calculer_aura(data):
-    """
-    Calcule la Couche AURA complète :
-    - 4 signaux composites (A, U, R, AMP)
-    - AURA Score (0-100)
-    - AURA Niveau (Faible / Modéré / Fort / Exceptionnel)
-    - Attribution détaillée
-    - Détection de conflits
-    - Signature unique
-    """
     match = data.get("match", {})
     sport = match.get("sport", "football")
 
-    # --- Calcul des 4 signaux ---
     signal_A = _signal_contextuel(data)
     signal_U = _signal_qualite(data)
     signal_R = _signal_robustesse(data)
@@ -298,10 +260,8 @@ def calculer_aura(data):
         "AMP": round(signal_AMP, 4),
     }
 
-    # --- Poids par sport ---
     poids = POIDS_SPORT.get(sport, POIDS_SPORT["football"])
 
-    # --- Score global ---
     aura_score = (
         poids["A"] * signal_A
         + poids["U"] * signal_U
@@ -310,7 +270,6 @@ def calculer_aura(data):
     ) * 100
     aura_score = round(aura_score, 1)
 
-    # --- Niveau ---
     if aura_score >= 85:
         niveau = "EXCEPTIONNEL"
         emoji = "💎"
@@ -332,16 +291,13 @@ def calculer_aura(data):
         emoji = "⚪"
         couleur = "#6b7280"
 
-    # --- Détection de conflits ---
     conflits = _detecter_conflits(data, signaux)
 
-    # --- Attribution en pourcentage (contribution relative) ---
     contrib_A = round(poids["A"] * signal_A * 100, 1)
     contrib_U = round(poids["U"] * signal_U * 100, 1)
     contrib_R = round(poids["R"] * signal_R * 100, 1)
     contrib_AMP = round(poids["AMP"] * signal_AMP * 100, 1)
 
-    # --- Signature unique ---
     timestamp = datetime.now().isoformat()
     cle_sig = "AURA-{}-{}-{}-{}-{}-{}".format(
         match.get("equipe1", ""),
