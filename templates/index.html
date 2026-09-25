@@ -219,7 +219,7 @@
     <label id="label_ah">Cote Handicap Asiatique -0.5</label>
     <input type="number" step="0.01" name="cote_ah" id="input_ah" required>
 
-    <label id="label_over25">Cote Over 2.5</label>
+    <label id="label_over25">Cote Over/Under 2.5</label>
     <input type="number" step="0.01" name="cote_over25" id="input_over25" required>
 
     <label id="label_btts">Cote BTTS Oui</label>
@@ -235,13 +235,54 @@
     
     <script>
         const selectSport = document.getElementById("select_sport");
+        const inputCompetition = document.querySelector('input[name="competition"]');
         const blocSurface = document.getElementById("bloc_surface");
         const blocFatigue = document.getElementById("bloc_fatigue");
         const blocCalendrier = document.getElementById("bloc_calendrier");
         const blocCalendrierBasket = document.getElementById("bloc_calendrier_basket");
 
+        function detecterLigneOver(sport, competition) {
+            const comp = (competition || "").toLowerCase().trim();
+
+            // --- HOCKEY ---
+            if (sport === "hockey") {
+                if (comp.includes("nhl")) return "Cote Over/Under 5.5 (buts)";
+                if (comp.includes("khl")) return "Cote Over/Under 4.5 (buts)";
+                if (comp.includes("shl") || comp.includes("suède") || comp.includes("liiga") || comp.includes("finlande") || comp.includes("del") || comp.includes("allemagne")) {
+                    return "Cote Over/Under 5.0 (buts)";
+                }
+                if (comp.includes("world cup") || comp.includes("olympic") || comp.includes("jo")) {
+                    return "Cote Over/Under 5.5 (buts)";
+                }
+                return "Cote Over/Under 5.5 (buts)";
+            }
+
+            // --- BASKET ---
+            if (sport === "basket") {
+                if (comp.includes("nba")) return "Cote Over/Under 220.5";
+                if (comp.includes("euroleague") || comp.includes("euroligue") || comp.includes("euro")) {
+                    return "Cote Over/Under 160.5";
+                }
+                return "Cote Over/Under 180.5";
+            }
+
+            // --- TENNIS ---
+            if (sport === "tennis") {
+                if (comp.includes("roland") || comp.includes("wimbledon") || comp.includes("us open") || comp.includes("australian") || comp.includes("grand chelem") || comp.includes("grand slam")) {
+                    return "Cote Over/Under 32.5 jeux";
+                }
+                if (comp.includes("wta")) return "Cote Over/Under 21.5 jeux";
+                if (comp.includes("atp")) return "Cote Over/Under 22.5 jeux";
+                return "Cote Over/Under 22.5 jeux";
+            }
+
+            // --- FOOTBALL (défaut) ---
+            return "Cote Over/Under 2.5";
+        }
+
         function majLabels() {
             const sport = selectSport.value;
+            const competition = inputCompetition ? inputCompetition.value : "";
             const eq1 = document.getElementById("label_equipe1");
             const eq2 = document.getElementById("label_equipe2");
             const c1 = document.getElementById("label_cote_ouv1");
@@ -262,6 +303,8 @@
             const bt = document.getElementById("label_btts");
             const aideSd = document.getElementById("aide_scores_dom");
             const titreCal = document.getElementById("titre_calendrier");
+
+            const labelOver = detecterLigneOver(sport, competition);
 
             if (sport === "tennis") {
                 blocSurface.style.display = "block";
@@ -284,7 +327,7 @@
                 seg.textContent = "5 derniers scores globaux (en sets)";
                 h2h.textContent = "5 derniers H2H (Joueur1-Joueur2, en sets)";
                 ah.textContent = "Cote Vainqueur Joueur 1";
-                ov.textContent = "Cote Over/Under Jeux (ex: 22.5)";
+                ov.textContent = labelOver;
                 bt.textContent = "Cote Score Exact Sets (ex: 2-0)";
                 aideSd.textContent = "Format : sets_pour-sets_contre (ex: 2-0, 2-1, 0-2)";
             } else if (sport === "basket") {
@@ -308,7 +351,7 @@
                 seg.textContent = "5 derniers scores globaux";
                 h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
                 ah.textContent = "Cote Money Line Domicile";
-                ov.textContent = "Cote Total Points Over/Under";
+                ov.textContent = labelOver;
                 bt.textContent = "Cote Spread -4.5 (Domicile)";
                 aideSd.textContent = "Format : points_pour-points_contre (ex: 108-102)";
             } else if (sport === "hockey") {
@@ -333,7 +376,7 @@
                 seg.textContent = "5 derniers scores globaux";
                 h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
                 ah.textContent = "Cote Money Line Domicile (incl. prolongation)";
-                ov.textContent = "Cote Total Buts Over/Under (ex: 5.5)";
+                ov.textContent = labelOver;
                 bt.textContent = "Cote Puck Line -1.5 (Domicile — gagne par 2+)";
                 aideSd.textContent = "Format : buts_pour-buts_contre (ex: 4-2, 3-1)";
             } else {
@@ -358,13 +401,16 @@
                 seg.textContent = "5 derniers scores globaux";
                 h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
                 ah.textContent = "Cote Handicap Asiatique -0.5";
-                ov.textContent = "Cote Over 2.5";
+                ov.textContent = labelOver;
                 bt.textContent = "Cote BTTS Oui";
                 aideSd.textContent = "Format : buts_pour-buts_contre, séparés par des virgules";
             }
         }
 
         selectSport.addEventListener("change", majLabels);
+        if (inputCompetition) {
+            inputCompetition.addEventListener("input", majLabels);
+        }
         majLabels();
     </script>
 </body>
