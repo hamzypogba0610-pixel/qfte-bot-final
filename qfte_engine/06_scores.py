@@ -46,6 +46,8 @@ def predire_scores(data):
         return _scores_basket(data)
     if sport == "tennis":
         return _scores_tennis(data)
+    if sport == "hockey":
+        return _scores_hockey(data)
     return _scores_football(data)
 
 
@@ -123,12 +125,6 @@ def _scores_basket(data):
 
 
 def _scores_tennis(data):
-    """
-    Prédiction des scores tennis (en sets) via loi binomiale.
-    - Best of 3 : scores possibles 2-0, 2-1, 1-2, 0-2
-    - Best of 5 : scores possibles 3-0, 3-1, 3-2, 2-3, 1-3, 0-3
-    - Score après 1er set : 1-0 ou 0-1 selon p_set
-    """
     tennis_cfg = data.get("tennis_config", {})
     p_set = float(tennis_cfg.get("p_set", 0.5))
     best_of = int(tennis_cfg.get("best_of", 3))
@@ -136,7 +132,6 @@ def _scores_tennis(data):
 
     p_opp = 1 - p_set
 
-    # --- Calcul des probas de chaque score de sets ---
     scores = []
 
     if best_of == 3:
@@ -144,7 +139,7 @@ def _scores_tennis(data):
         scores.append({"score": "2-1", "proba": round(2 * (p_set ** 2) * p_opp, 4)})
         scores.append({"score": "1-2", "proba": round(2 * p_set * (p_opp ** 2), 4)})
         scores.append({"score": "0-2", "proba": round(p_opp ** 2, 4)})
-    else:  # best_of == 5
+    else:
         scores.append({"score": "3-0", "proba": round(p_set ** 3, 4)})
         scores.append({"score": "3-1", "proba": round(3 * (p_set ** 3) * p_opp, 4)})
         scores.append({"score": "3-2", "proba": round(6 * (p_set ** 3) * (p_opp ** 2), 4)})
@@ -155,19 +150,11 @@ def _scores_tennis(data):
     scores.sort(key=lambda s: s["proba"], reverse=True)
     top_2_scores = scores[:2]
 
-    # --- Score après 1er set ---
     if p_set >= 0.5:
-        top_ht_score = {
-            "score": "1-0",
-            "proba": round(p_set, 4),
-        }
+        top_ht_score = {"score": "1-0", "proba": round(p_set, 4)}
     else:
-        top_ht_score = {
-            "score": "0-1",
-            "proba": round(p_opp, 4),
-        }
+        top_ht_score = {"score": "0-1", "proba": round(p_opp, 4)}
 
-    # --- Ajout de la confiance sur chaque marché ---
     marches = data.get("marches", [])
     resultat = []
     for m in marches:
@@ -180,4 +167,85 @@ def _scores_tennis(data):
     data["top_2_scores"] = top_2_scores
     data["top_ht_score"] = top_ht_score
     data["ligne_jeux_tennis"] = ligne_jeux
+    return data
+
+
+
+def _scores_hockey(data):
+    """
+    Prédiction des scores hockey + prédiction par période.
+
+    - Score exact le plus probable (0-0 à 8-8)
+    - Top 2 scores exacts
+    - Score après 1ère période
+    - Scores prédits par période (P1, P2, P3)
+    """
+    lambda_home = float(data.get("lambda_home", 3.0))
+    lambda_away = float(data.get("lambda_away", 2.8))
+
+    # Répartition par période (doit correspondre à 03_market.py)
+    repartition = {"p1": 0.28, "p2": 0.35, "p3": 0.37}
+
+    # --- Scores exacts sur le match entier (Poisson simple, pas de DC au hockey) ---
+    scores = []
+    for i in range(0, 9):
+        for j in range(0, 9):
+            p = poisson(i, lambda_home) * poisson(j, lambda_away)
+            scores.append({"score": f"{i}-{j}", "proba": round(p, 4)})
+
+    scores.sort(key=lambda s: s["proba"], reverse=True)
+    top_2_scores = scores[:2]
+
+    # --- Score après 1ère période ---
+    lh_p1 = lambda_home * repartition["p1"]
+    la_p1 = lambda_away * repartition["p1"]
+
+    scores_p1 = []
+    for i in range(0, 5):
+        for j in range(0, 5):
+            p = poisson(i, lh_p1) * poisson(j, la_p1)
+            scores_p1.append({"score": f"{i}-{j}", "proba": round(p, 4)})
+    scores_p1.sort(key=lambda s: s["proba"], reverse=True)
+    top_ht_score = scores_p1[0]
+
+    # --- Scores par période (P1, P2, P3) ---
+    scores_periodes = {}
+    for periode, part in repartition.items():
+        lh_p = lambda_home * part
+        la_p = lambda_away * part
+
+        scores_p = []
+        for i in range(0, 5):
+            for j in range(0, 5):
+                p = poisson(i, lh_p) * poisson(j, la_p)
+                scores_p.append({"score": f"{i}-{j}", "proba": round(p, 4)})
+        scores_p.sort(key=lambda s: s["proba"], reverse=True)
+
+        nom_periode = {
+            "p1": "1ère période",
+            "p2": "2ème période",
+            "p3": "3ème période",
+        }[periode]
+
+        scores_periodes[periode] = {
+            "nom": nom_periode,
+            "lambda_h": round(lh_p, 3),
+            "lambda_a": round(la_p, 3),
+            "top_score": scores_p[0],
+            "top_3": scores_p[:3],
+        }
+
+    # --- Confiance sur chaque marché ---
+    marches = data.get("marches", [])
+    resultat = []
+    for m in marches:
+        proba_calibree = float(m.get("proba_calibree", 0.5))
+        confiance = proba_calibree if proba_calibree >= 0.5 else (1 - proba_calibree)
+        m["confiance"] = round(confiance * 100, 1)
+        resultat.append(m)
+
+    data["marches"] = resultat
+    data["top_2_scores"] = top_2_scores
+    data["top_ht_score"] = top_ht_score
+    data["hockey_scores_periodes"] = scores_periodes
     return data
