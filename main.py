@@ -41,7 +41,7 @@ async def analyser(
     h2h_5: str = Form(""),
     cote_ah: float = Form(...),
     cote_over25: float = Form(...),
-    cote_btts: float = Form(0.0),  # ← OPTIONNEL (hockey n'a pas de BTTS)
+    cote_btts: float = Form(0.0),
     volume: int = Form(...),
     # Champs tennis
     matchs_7j_j1: int = Form(0),
@@ -160,6 +160,7 @@ async def analyser(
             "stats_avancees": resultat.get("stats_avancees", {}),
             "aura": resultat.get("aura", {}),
             "oracle": resultat.get("oracle", {}),
+            "chronos": resultat.get("chronos", {}),
         },
     )
 
@@ -191,4 +192,4 @@ async def dashboard(request: Request):
             "roi": roi,
             "dernieres": dernieres,
         },
-        )
+    )
