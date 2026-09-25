@@ -22,6 +22,59 @@ TENNIS_CONFIG = {
     "default": {"best_of": 3, "ligne_jeux": 22.5, "sigma_jeux": 4.5, "moyenne_jeux_set": 9.5},
 }
 
+# ============================================================
+# CONFIGURATION HOCKEY SUR GLACE
+# ============================================================
+HOCKEY_CONFIG = {
+    "nhl": {
+        "total_defaut": 5.8,
+        "home_advantage": 0.20,
+        "ligne_periode": 1.5,
+    },
+    "khl": {
+        "total_defaut": 4.8,
+        "home_advantage": 0.15,
+        "ligne_periode": 1.5,
+    },
+    "shl": {
+        "total_defaut": 5.0,
+        "home_advantage": 0.18,
+        "ligne_periode": 1.5,
+    },
+    "liiga": {
+        "total_defaut": 5.0,
+        "home_advantage": 0.18,
+        "ligne_periode": 1.5,
+    },
+    "del": {
+        "total_defaut": 5.2,
+        "home_advantage": 0.18,
+        "ligne_periode": 1.5,
+    },
+    "world cup": {
+        "total_defaut": 5.5,
+        "home_advantage": 0.15,
+        "ligne_periode": 1.5,
+    },
+    "olympic": {
+        "total_defaut": 5.5,
+        "home_advantage": 0.15,
+        "ligne_periode": 1.5,
+    },
+    "default": {
+        "total_defaut": 5.5,
+        "home_advantage": 0.18,
+        "ligne_periode": 1.5,
+    },
+}
+
+# Répartition des buts par période (statistiques NHL)
+REPARTITION_PERIODES = {
+    "p1": 0.28,
+    "p2": 0.35,
+    "p3": 0.37,
+}
+
 
 def _config_basket(competition):
     comp = (competition or "").lower().strip()
@@ -38,6 +91,26 @@ def _config_tennis(competition):
     if "wta" in comp: return TENNIS_CONFIG["wta"]
     if "atp" in comp: return TENNIS_CONFIG["atp"]
     return TENNIS_CONFIG["default"]
+
+
+def _config_hockey(competition):
+    """Détecte la config hockey selon la compétition."""
+    comp = (competition or "").lower().strip()
+    if "nhl" in comp:
+        return HOCKEY_CONFIG["nhl"]
+    if "khl" in comp:
+        return HOCKEY_CONFIG["khl"]
+    if "shl" in comp or "suède" in comp or "sweden" in comp:
+        return HOCKEY_CONFIG["shl"]
+    if "liiga" in comp or "finlande" in comp or "finland" in comp:
+        return HOCKEY_CONFIG["liiga"]
+    if "del" in comp or "allemagne" in comp or "germany" in comp:
+        return HOCKEY_CONFIG["del"]
+    if "world cup" in comp or "coupe du monde" in comp:
+        return HOCKEY_CONFIG["world cup"]
+    if "olympic" in comp or "jo" in comp or "olympique" in comp:
+        return HOCKEY_CONFIG["olympic"]
+    return HOCKEY_CONFIG["default"]
 
 
 def poisson(k, lam):
@@ -121,6 +194,8 @@ def analyser_marche(data):
         return _analyser_basket(data, match)
     if sport == "tennis":
         return _analyser_tennis(data, match)
+    if sport == "hockey":
+        return _analyser_hockey(data, match)
     return _analyser_football(data, match)
 
 
@@ -239,7 +314,6 @@ def _analyser_football(data, match):
     return data
 
 
-
 def _analyser_basket(data, match):
     co = float(match.get("cote_ouverture", 1.85))
     cf = float(match.get("cote_actuelle", 1.85))
@@ -283,7 +357,6 @@ def _analyser_basket(data, match):
 
     ecart_moyen += home_advantage * 0.4
 
-    # ✨ AJUSTEMENT PAR LE CALENDRIER BASKET
     calendrier_basket = data.get("calendrier_basket", {})
     impact_cal_dom_pts = 0.0
     impact_cal_ext_pts = 0.0
@@ -312,7 +385,6 @@ def _analyser_basket(data, match):
 
     total_points_estime += (forme_dom + forme_ext) * 1.5
 
-    # Impact du calendrier sur le TOTAL (équipe fatiguée marque moins)
     impact_cal_total = (impact_cal_dom_pts + impact_cal_ext_pts) * 0.3
     total_points_estime += impact_cal_total
 
@@ -553,3 +625,240 @@ def _analyser_tennis(data, match):
          "proba_juste": round(proba_2_0, 4), "mouvement": round(mouvement * 0.6, 4)},
     ]
     return data
+
+
+
+def _analyser_hockey(data, match):
+    """
+    Analyse Hockey sur Glace QFTE V23.0.
+
+    Marchés analysés (6 en interne, 4 affichés) :
+    - Money Line (vainqueur incl. prolongation)
+    - Puck Line -1.5 (victoire par 2+ buts)
+    - Total Buts Over/Under (ligne config)
+    - Total Période (auto-sélection parmi P1, P2, P3)
+    """
+    co = float(match.get("cote_ouverture", 2.0))
+    cf = float(match.get("cote_actuelle", 2.0))
+    volume = float(match.get("volume", 50000))
+    competition = match.get("competition", "")
+
+    contexte = data.get("contexte", {})
+    forme = contexte.get("forme", {})
+    h2h = contexte.get("h2h", {})
+    scores_ctx = contexte.get("scores", {})
+
+    # --- Config hockey ---
+    cfg = _config_hockey(competition)
+    ligne_totale = cfg["total_defaut"]
+    home_advantage = cfg["home_advantage"]
+    ligne_periode = cfg["ligne_periode"]
+
+    # --- Proba ML depuis la cote ---
+    marge = _marge_dynamique(co, cf)
+    proba_impl = 1 / cf
+    proba_demargee = proba_impl / (1 + marge)
+    mouvement = (cf - co) / co if co > 0 else 0
+    bonus_sharp = max(-0.02, min(0.03, -mouvement * 0.7))
+    proba_ml = max(0.20, min(0.85, proba_demargee + bonus_sharp))
+
+    # --- Total buts (H2H si dispo, sinon config) ---
+    total_buts = ligne_totale
+    if h2h.get("n", 0) >= 3:
+        total_buts = (total_buts * 0.5) + (h2h["moy_buts"] * 0.5)
+
+    # --- Estimation des λ ---
+    total_avec_av = total_buts + home_advantage
+    lambda_poiss_h, lambda_poiss_a = estimer_lambda(proba_ml, total_buts=total_avec_av)
+
+    # --- Modèle attaque × défense (scores réels) ---
+    sc_dom = {"marques": scores_ctx.get("dom_marques"), "encaisses": scores_ctx.get("dom_encaisses")}
+    sc_ext = {"marques": scores_ctx.get("ext_marques"), "encaisses": scores_ctx.get("ext_encaisses")}
+    lambda_data_h, lambda_data_a = _lambda_depuis_scores(sc_dom, sc_ext, lambda_poiss_h, lambda_poiss_a)
+
+    has_data = scores_ctx.get("dom_marques") is not None and scores_ctx.get("ext_marques") is not None
+
+    if has_data:
+        lambda_home = 0.50 * lambda_poiss_h + 0.50 * lambda_data_h
+        lambda_away = 0.50 * lambda_poiss_a + 0.50 * lambda_data_a
+    else:
+        lambda_home = lambda_poiss_h
+        lambda_away = lambda_poiss_a
+
+    # --- Ajustements forme et H2H ---
+    lambda_home += float(forme.get("dom_finale", 0)) * 0.20
+    lambda_away += float(forme.get("ext_finale", 0)) * 0.20
+
+    if h2h.get("domine") == "dom":
+        lambda_home += 0.15; lambda_away -= 0.10
+    elif h2h.get("domine") == "ext":
+        lambda_away += 0.15; lambda_home -= 0.10
+
+    lambda_home = max(0.20, lambda_home)
+    lambda_away = max(0.20, lambda_away)
+
+    # ============================================================
+    # MARCHÉ 1 : Money Line (probabilité de gagner, incl. prolongation)
+    # ============================================================
+    p_home, p_nul, p_away = proba_resultat_1x2(lambda_home, lambda_away)
+    # En NHL, si match nul en temps réglementaire → prolongation
+    # Le favori a ~55% de chances de gagner en prolongation, l'outsider ~45%
+    proba_home_ml = p_home + p_nul * 0.55
+    proba_away_ml = p_away + p_nul * 0.45
+
+    # ============================================================
+    # MARCHÉ 2 : Puck Line -1.5 (victoire par 2+ buts)
+    # ============================================================
+    proba_puck_line = 0.0
+    for i in range(0, 12):
+        for j in range(0, 12):
+            if (i - j) >= 2:
+                proba_puck_line += poisson(i, lambda_home) * poisson(j, lambda_away)
+
+    # ============================================================
+    # MARCHÉ 3 : Total Buts (Over/Under)
+    # ============================================================
+    proba_over = proba_over_total(lambda_home, lambda_away, ligne_totale)
+    proba_under = 1 - proba_over
+
+    # ============================================================
+    # MARCHÉ 4 : Total Période — Auto-sélection parmi P1/P2/P3
+    # ============================================================
+    probas_periodes = []
+    for periode, part in REPARTITION_PERIODES.items():
+        lam_h_p = lambda_home * part
+        lam_a_p = lambda_away * part
+        p_over_p = proba_over_total(lam_h_p, lam_a_p, ligne_periode)
+        probas_periodes.append({
+            "periode": periode,
+            "nom": {"p1": "1ère période", "p2": "2ème période", "p3": "3ème période"}[periode],
+            "proba_over": p_over_p,
+            "lambda_h": round(lam_h_p, 3),
+            "lambda_a": round(lam_a_p, 3),
+        })
+
+    # ============================================================
+    # AUTO-SÉLECTION DE LA MEILLEURE PÉRIODE
+    # ============================================================
+    cote_over_brute = float(match.get("cote_over25") or 0)
+    if cote_over_brute <= 0:
+        cote_over_brute = 1 / (proba_over * (1 + marge))
+
+    meilleure_periode = None
+    meilleur_ev_periode = -999
+
+    for p in probas_periodes:
+        # EV estimé pour Over et Under de cette période
+        cote_p_over = cote_over_brute  # cote similaire pour toutes les périodes
+        cote_p_under = 1 / ((1 - p["proba_over"]) * (1 + marge)) if p["proba_over"] < 1 else 10.0
+        ev_p_over = (p["proba_over"] * cote_p_over) - 1
+        ev_p_under = ((1 - p["proba_over"]) * cote_p_under) - 1
+        ev_max = max(ev_p_over, ev_p_under)
+
+        if ev_max > meilleur_ev_periode:
+            meilleur_ev_periode = ev_max
+            meilleure_periode = {
+                "periode": p["periode"],
+                "nom": p["nom"],
+                "proba_over": p["proba_over"],
+                "ev_over": ev_p_over,
+                "ev_under": ev_p_under,
+                "selection": "Over" if ev_p_over >= ev_p_under else "Under",
+                "proba_selection": p["proba_over"] if ev_p_over >= ev_p_under else (1 - p["proba_over"]),
+                "cote_selection": cote_p_over if ev_p_over >= ev_p_under else cote_p_under,
+                "lambda_h": p["lambda_h"],
+                "lambda_a": p["lambda_a"],
+            }
+
+    # ============================================================
+    # EV POUR LES AUTRES MARCHÉS
+    # ============================================================
+    cote_ml_f = float(match.get("cote_ah") or (1 / (proba_home_ml * (1 + marge))))
+    cote_puck_line_f = float(match.get("cote_btts") or (1 / (proba_puck_line * (1 + marge))))
+
+    cote_under_tot = 1 / (proba_under * (1 + marge)) if proba_under > 0 else 10.0
+
+    ev_over = (proba_over * cote_over_brute) - 1
+    ev_under = (proba_under * cote_under_tot) - 1
+
+    if ev_over >= ev_under:
+        selection_ou = "Over " + str(ligne_totale)
+        proba_ou = proba_over
+        cote_ou = cote_over_brute
+    else:
+        selection_ou = "Under " + str(ligne_totale)
+        proba_ou = proba_under
+        cote_ou = cote_under_tot
+
+    # ============================================================
+    # STOCKAGE
+    # ============================================================
+    data["volume"] = volume
+    data["liquidite_ok"] = volume >= 50000
+    data["lambda_home"] = round(lambda_home, 3)
+    data["lambda_away"] = round(lambda_away, 3)
+    data["marge_estimee"] = marge
+    data["total_buts_comp"] = round(total_buts, 2)
+    data["modele_lambda"] = "Poisson hockey + attaque/défense"
+    data["hockey_config"] = {
+        "type": "NHL" if "nhl" in (competition or "").lower() else
+                ("KHL" if "khl" in (competition or "").lower() else "Standard"),
+        "ligne_totale": ligne_totale,
+        "ligne_periode": ligne_periode,
+        "home_advantage": home_advantage,
+    }
+    data["auto_ou"] = {
+        "ev_over": round(ev_over, 4),
+        "ev_under": round(ev_under, 4),
+        "choix": selection_ou,
+    }
+    data["hockey_periodes"] = {
+        "toutes": probas_periodes,
+        "meilleure": meilleure_periode,
+    }
+
+    data["marches"] = [
+        {
+            "nom": "Money Line",
+            "selection": match.get("equipe1", "-"),
+            "cote": round(cote_ml_f, 2),
+            "cote_ouverture": round(cote_ml_f * 1.02, 2),
+            "proba_juste": round(proba_home_ml, 4),
+            "mouvement": round(mouvement, 4),
+        },
+        {
+            "nom": "Puck Line -1.5",
+            "selection": match.get("equipe1", "-"),
+            "cote": round(cote_puck_line_f, 2),
+            "cote_ouverture": round(cote_puck_line_f * 1.02, 2),
+            "proba_juste": round(proba_puck_line, 4),
+            "mouvement": round(mouvement * 0.8, 4),
+        },
+        {
+            "nom": "Total Buts",
+            "selection": selection_ou,
+            "cote": round(cote_ou, 2),
+            "cote_ouverture": round(cote_ou * 1.02, 2),
+            "proba_juste": round(proba_ou, 4),
+            "mouvement": round(mouvement * 0.6, 4),
+        },
+        {
+            "nom": "Total " + meilleure_periode["nom"] + " " + str(ligne_periode),
+            "selection": meilleure_periode["selection"],
+            "cote": round(meilleure_periode["cote_selection"], 2),
+            "cote_ouverture": round(meilleure_periode["cote_selection"] * 1.02, 2),
+            "proba_juste": round(meilleure_periode["proba_selection"], 4),
+            "mouvement": round(mouvement * 0.4, 4),
+        },
+    ]
+    return data
+
+
+def proba_over_total(lh, la, ligne=5.5, max_buts=15):
+    """Probabilité Over pour une ligne donnée."""
+    p = 0.0
+    for i in range(max_buts + 1):
+        for j in range(max_buts + 1):
+            if i + j > ligne:
+                p += poisson(i, lh) * poisson(j, la)
+    return p
