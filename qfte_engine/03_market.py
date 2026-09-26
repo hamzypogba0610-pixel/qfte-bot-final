@@ -160,7 +160,6 @@ def analyser_marche(data):
 def _analyser_football(data, match):
     favori = (match.get("favori", "equipe1") or "equipe1").lower()
 
-    # --- Choisir la cote de référence selon le favori ---
     if favori == "equipe2":
         co = float(match.get("cote_ouv_2", 2.0) or 2.0)
         cf = float(match.get("cote_ferm_2", 2.0) or 2.0)
@@ -191,7 +190,6 @@ def _analyser_football(data, match):
 
     total_avec_av = total_buts + 0.20
 
-    # --- Estimer les lambdas pour que P(favori gagne) = proba_fav ---
     if favori == "equipe2":
         lo, hi = 0.10, 0.80
         for _ in range(30):
@@ -207,7 +205,6 @@ def _analyser_football(data, match):
     else:
         lambda_poiss_h, lambda_poiss_a = estimer_lambda(proba_fav, total_buts=total_avec_av)
 
-    # --- Modèle attaque × défense ---
     sc_dom = {"marques": scores_ctx.get("dom_marques"), "encaisses": scores_ctx.get("dom_encaisses")}
     sc_ext = {"marques": scores_ctx.get("ext_marques"), "encaisses": scores_ctx.get("ext_encaisses")}
     lambda_data_h, lambda_data_a = _lambda_depuis_scores(sc_dom, sc_ext, lambda_poiss_h, lambda_poiss_a)
@@ -241,16 +238,29 @@ def _analyser_football(data, match):
     lambda_home = max(0.20, lambda_home)
     lambda_away = max(0.20, lambda_away)
 
-    # --- Calcul des probas 1X2 finales ---
+    # --- Probas 1X2 ---
     p_home, p_nul, p_away = proba_resultat_1x2(lambda_home, lambda_away)
 
-    # --- Sélection selon favori ---
+    # --- HA -0.5 (favori gagne) ---
     if favori == "equipe2":
         proba_ah = p_away
     else:
         proba_ah = p_home
 
-    # --- Over/Under (indépendant du favori) ---
+    # --- HA -1.5 (favori gagne par 2+) ---
+    proba_ah_15 = 0.0
+    for i in range(0, 12):
+        for j in range(0, 12):
+            p = poisson(i, lambda_home) * poisson(j, lambda_away)
+            if favori == "equipe2":
+                if (j - i) >= 2:
+                    proba_ah_15 += p
+            else:
+                if (i - j) >= 2:
+                    proba_ah_15 += p
+    proba_ah_15 = max(0.05, min(0.85, proba_ah_15))
+
+    # --- Over/Under ---
     proba_over25 = proba_over(lambda_home, lambda_away, 2.5)
     proba_under25 = 1 - proba_over25
     proba_btts_val = proba_btts(lambda_home, lambda_away)
@@ -273,6 +283,7 @@ def _analyser_football(data, match):
         cote_ou = cote_under25
 
     cote_ah_f = float(match.get("cote_ah") or (1 / (proba_ah * (1 + marge))))
+    cote_ah_15_f = float(match.get("cote_ah_15") or (1 / (proba_ah_15 * (1 + marge))))
     cote_btts_f = float(match.get("cote_btts") or (1 / (proba_btts_val * (1 + marge))))
 
     data["volume"] = volume
@@ -297,6 +308,9 @@ def _analyser_football(data, match):
         {"nom": "Handicap Asiatique -0.5", "selection": nom_fav,
          "cote": round(cote_ah_f, 2), "cote_ouverture": round(cote_ah_f * 1.02, 2),
          "proba_juste": round(proba_ah, 4), "mouvement": round(mouvement, 4)},
+        {"nom": "Handicap Asiatique -1.5", "selection": nom_fav,
+         "cote": round(cote_ah_15_f, 2), "cote_ouverture": round(cote_ah_15_f * 1.02, 2),
+         "proba_juste": round(proba_ah_15, 4), "mouvement": round(mouvement * 0.9, 4)},
         {"nom": "Over/Under 2.5", "selection": selection_ou,
          "cote": round(cote_ou, 2), "cote_ouverture": round(cote_ou * 1.02, 2),
          "proba_juste": round(proba_ou, 4), "mouvement": round(mouvement * 0.8, 4)},
@@ -340,14 +354,11 @@ def _analyser_basket(data, match):
     bonus_sharp = max(-0.02, min(0.03, -mouvement * 0.7))
     proba_ml = max(0.20, min(0.85, proba_demargee + bonus_sharp))
 
-    # --- Écart moyen dans le sens équipe 1 - équipe 2 ---
-    # Si favori = équipe 1, on cherche μ tel que P(écart > 0) = proba_ml
-    # Si favori = équipe 2, on cherche μ tel que P(écart < 0) = proba_ml
     if favori == "equipe2":
         lo, hi = -40.0, 40.0
         for _ in range(40):
             mid = (lo + hi) / 2
-            p = norm_cdf(0, mid, sigma_ecart)  # P(écart < 0) = P(équipe 2 gagne)
+            p = norm_cdf(0, mid, sigma_ecart)
             if p < proba_ml: lo = mid
             else: hi = mid
         ecart_moyen = (lo + hi) / 2
@@ -406,9 +417,8 @@ def _analyser_basket(data, match):
     proba_over_tot = max(0.15, min(0.85, proba_over_tot))
     proba_under_tot = 1 - proba_over_tot
 
-    # --- Spread -4.5 dans le sens du favori ---
     if favori == "equipe2":
-        proba_spread = norm_cdf(-4.5, ecart_moyen, sigma_ecart)  # équipe2 gagne par 5+
+        proba_spread = norm_cdf(-4.5, ecart_moyen, sigma_ecart)
     else:
         proba_spread = 1 - norm_cdf(4.5, ecart_moyen, sigma_ecart)
     proba_spread = max(0.10, min(0.90, proba_spread))
@@ -511,7 +521,6 @@ def _analyser_tennis(data, match):
     joueur1 = match.get("equipe1", "")
     joueur2 = match.get("equipe2", "")
 
-    # Elo : proba_elo retourne P(joueur1 gagne)
     elo_info = _elo_tennis.proba_elo(joueur1, joueur2, surface)
     blend = _elo_tennis.blend_elo_cote(
         proba_cote,
@@ -519,7 +528,6 @@ def _analyser_tennis(data, match):
         elo_info["confiance_elo"],
     )
 
-    # proba_ml_fav = proba que le FAVORI gagne
     if favori == "equipe2":
         proba_ml_fav = 1 - blend["proba_finale"]
     else:
@@ -557,7 +565,6 @@ def _analyser_tennis(data, match):
 
     proba_ml_fav = max(0.10, min(0.90, proba_ml_fav))
 
-    # P(set) pour le favori
     def proba_match(p_set):
         if best_of == 3:
             return (p_set ** 2) + 2 * (p_set ** 2) * (1 - p_set)
@@ -741,29 +748,42 @@ def _analyser_hockey(data, match):
     lambda_home = max(0.20, lambda_home)
     lambda_away = max(0.20, lambda_away)
 
-    # --- Calculs 1X2 ---
+    # --- Probas 1X2 ---
     p_home, p_nul, p_away = proba_resultat_1x2(lambda_home, lambda_away)
     proba_home_ml = p_home + p_nul * 0.55
     proba_away_ml = p_away + p_nul * 0.45
 
-    # --- Puck Line -1.5 sur les 2 équipes ---
-    proba_pl_home = 0.0
-    proba_pl_away = 0.0
+    # --- Puck Lines (calcul sur les 2 équipes) ---
+    proba_pl_15_home = 0.0
+    proba_pl_15_away = 0.0
+    proba_pl_25_home = 0.0
+    proba_pl_25_away = 0.0
     for i in range(0, 12):
         for j in range(0, 12):
             p = poisson(i, lambda_home) * poisson(j, lambda_away)
             if (i - j) >= 2:
-                proba_pl_home += p
+                proba_pl_15_home += p
             if (j - i) >= 2:
-                proba_pl_away += p
+                proba_pl_15_away += p
+            if (i - j) >= 3:
+                proba_pl_25_home += p
+            if (j - i) >= 3:
+                proba_pl_25_away += p
+
+    proba_pl_15_home = max(0.05, min(0.85, proba_pl_15_home))
+    proba_pl_15_away = max(0.05, min(0.85, proba_pl_15_away))
+    proba_pl_25_home = max(0.02, min(0.75, proba_pl_25_home))
+    proba_pl_25_away = max(0.02, min(0.75, proba_pl_25_away))
 
     # --- Sélection selon favori ---
     if favori == "equipe2":
         proba_ml_selection = proba_away_ml
-        proba_puck_line_selection = proba_pl_away
+        proba_pl_15_selection = proba_pl_15_away
+        proba_pl_25_selection = proba_pl_25_away
     else:
         proba_ml_selection = proba_home_ml
-        proba_puck_line_selection = proba_pl_home
+        proba_pl_15_selection = proba_pl_15_home
+        proba_pl_25_selection = proba_pl_25_home
 
     # --- Over/Under ---
     proba_over = proba_over_total(lambda_home, lambda_away, ligne_totale)
@@ -811,7 +831,8 @@ def _analyser_hockey(data, match):
             }
 
     cote_ml_f = float(match.get("cote_ah") or (1 / (proba_ml_selection * (1 + marge))))
-    cote_puck_line_f = float(match.get("cote_btts") or (1 / (proba_puck_line_selection * (1 + marge))))
+    cote_pl_15_f = float(match.get("cote_btts") or (1 / (proba_pl_15_selection * (1 + marge))))
+    cote_pl_25_f = float(match.get("cote_ah_15") or (1 / (proba_pl_25_selection * (1 + marge))))
     cote_under_tot = 1 / (proba_under * (1 + marge)) if proba_under > 0 else 10.0
 
     ev_over = (proba_over * cote_over_brute) - 1
@@ -856,8 +877,11 @@ def _analyser_hockey(data, match):
          "cote": round(cote_ml_f, 2), "cote_ouverture": round(cote_ml_f * 1.02, 2),
          "proba_juste": round(proba_ml_selection, 4), "mouvement": round(mouvement, 4)},
         {"nom": "Puck Line -1.5", "selection": nom_fav,
-         "cote": round(cote_puck_line_f, 2), "cote_ouverture": round(cote_puck_line_f * 1.02, 2),
-         "proba_juste": round(proba_puck_line_selection, 4), "mouvement": round(mouvement * 0.8, 4)},
+         "cote": round(cote_pl_15_f, 2), "cote_ouverture": round(cote_pl_15_f * 1.02, 2),
+         "proba_juste": round(proba_pl_15_selection, 4), "mouvement": round(mouvement * 0.8, 4)},
+        {"nom": "Puck Line -2.5", "selection": nom_fav,
+         "cote": round(cote_pl_25_f, 2), "cote_ouverture": round(cote_pl_25_f * 1.02, 2),
+         "proba_juste": round(proba_pl_25_selection, 4), "mouvement": round(mouvement * 0.7, 4)},
         {"nom": "Total Buts", "selection": selection_ou,
          "cote": round(cote_ou, 2), "cote_ouverture": round(cote_ou * 1.02, 2),
          "proba_juste": round(proba_ou, 4), "mouvement": round(mouvement * 0.6, 4)},
