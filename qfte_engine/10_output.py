@@ -3,7 +3,7 @@ def formater_recommandation(data):
     marches_tries = sorted(marches, key=lambda m: m.get("ev_net", 0), reverse=True)
 
     recos = []
-    for m in marches_tries[:3]:
+    for m in marches_tries[:4]:  # ← 4 recommandations au lieu de 3
         recos.append({
             "niveau": m.get("niveau", "AVOID"),
             "marche": m.get("nom", "-"),
@@ -16,4 +16,4 @@ def formater_recommandation(data):
         })
 
     data["recommandations"] = recos
-    return data
+    return datat 
