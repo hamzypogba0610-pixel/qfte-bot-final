@@ -19,6 +19,8 @@
         .row > div { flex: 1; }
         .bloc-favori { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #22d3ee; }
         .bloc-favori h3 { color: #22d3ee; margin-top: 0; font-size: 14px; }
+        .bloc-ligne { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #fbbf24; }
+        .bloc-ligne h3 { color: #fbbf24; margin-top: 0; font-size: 14px; }
         .bloc-calendrier { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #3b82f6; }
         .bloc-calendrier h3 { color: #3b82f6; margin-top: 0; font-size: 14px; }
         .bloc-calendrier-basket { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #a3e635; }
@@ -63,7 +65,7 @@
             <div class="bloc-favori">
                 <h3>⭐ Quel est le favori du match ?</h3>
                 <div class="aide" style="margin-bottom: 8px;">
-                    Le bot calcule les marchés "favori" (Handicap, ML, Spread, Vainqueur, Puck Line...) sur l'équipe choisie.
+                    Le bot calcule les marchés "favori" sur l'équipe choisie.
                 </div>
 
                 <label class="coche-bloc">
@@ -74,6 +76,25 @@
                 <label class="coche-bloc">
                     <input type="radio" name="favori" value="equipe2">
                     Équipe 2 (extérieur)
+                </label>
+            </div>
+        </div>
+
+        <div id="bloc_ligne_handicap" style="display: none;">
+            <div class="bloc-ligne">
+                <h3 id="titre_ligne_handicap">⚖️ Quelle ligne de handicap ?</h3>
+                <div class="aide" style="margin-bottom: 8px;" id="aide_ligne_handicap">
+                    Choisis la ligne proposée par ton bookmaker.
+                </div>
+
+                <label class="coche-bloc">
+                    <input type="radio" name="ligne_handicap" value="0.5" checked>
+                    <span id="label_ligne_1">Handicap Asiatique -0.5</span>
+                </label>
+
+                <label class="coche-bloc">
+                    <input type="radio" name="ligne_handicap" value="1.5">
+                    <span id="label_ligne_2">Handicap Asiatique -1.5</span>
                 </label>
             </div>
         </div>
@@ -188,7 +209,7 @@
                     Voyage long (côte à côte)
                 </label>
             </div>
-                    </div>
+    </div>
 
         
     <h2>📊 Cotes 1X2 (les 2 équipes)</h2>
@@ -236,15 +257,9 @@
     <label id="label_h2h">5 derniers scores H2H (Équipe1-Équipe2)</label>
     <input type="text" name="h2h_5" placeholder="Ex: 2-1,1-1,0-2,3-0,1-0" required>
 
-    <h2>🎯 Cotes des marchés analysés</h2>
+    <h2>🎯 Cotes des 3 marchés analysés</h2>
     <label id="label_ah">Cote Handicap Asiatique -0.5</label>
     <input type="number" step="0.01" name="cote_ah" id="input_ah" required>
-
-    <div id="bloc_ah_15" style="display: none;">
-        <label id="label_ah_15">Cote Handicap Asiatique -1.5</label>
-        <input type="number" step="0.01" name="cote_ah_15" id="input_ah_15" placeholder="Ex: 2.50">
-        <div class="aide" id="aide_ah_15">Le favori doit gagner par 2 buts ou plus</div>
-    </div>
 
     <label id="label_over25">Cote Over/Under 2.5</label>
     <input type="number" step="0.01" name="cote_over25" id="input_over25" required>
@@ -257,7 +272,7 @@
     <input type="number" name="volume" value="50000" required>
 
     <button type="submit">Analyser</button>
-            </form>
+    </form>
 
     
     <script>
@@ -269,7 +284,11 @@
         const blocFatigue = document.getElementById("bloc_fatigue");
         const blocCalendrier = document.getElementById("bloc_calendrier");
         const blocCalendrierBasket = document.getElementById("bloc_calendrier_basket");
-        const blocAh15 = document.getElementById("bloc_ah_15");
+        const blocLigneHandicap = document.getElementById("bloc_ligne_handicap");
+        const titreLigne = document.getElementById("titre_ligne_handicap");
+        const aideLigne = document.getElementById("aide_ligne_handicap");
+        const labelLigne1 = document.getElementById("label_ligne_1");
+        const labelLigne2 = document.getElementById("label_ligne_2");
 
         function detecterLigneOver(sport, competition) {
             const comp = (competition || "").toLowerCase().trim();
@@ -330,8 +349,6 @@
             const seg = document.getElementById("label_scores_ext_glob");
             const h2h = document.getElementById("label_h2h");
             const ah = document.getElementById("label_ah");
-            const ah15 = document.getElementById("label_ah_15");
-            const aideAh15 = document.getElementById("aide_ah_15");
             const ov = document.getElementById("label_over25");
             const bt = document.getElementById("label_btts");
             const aideSd = document.getElementById("aide_scores_dom");
@@ -340,12 +357,33 @@
             const labelOver = detecterLigneOver(sport, competition);
             const fav = getNomFavori(sport);
 
+            // --- Gestion du sélecteur de ligne ---
+            if (sport === "football") {
+                blocLigneHandicap.style.display = "block";
+                titreLigne.textContent = "⚖️ Quelle ligne de handicap ?";
+                aideLigne.textContent = "Choisis la ligne proposée par ton bookmaker.";
+                labelLigne1.textContent = "Handicap Asiatique -0.5";
+                labelLigne2.textContent = "Handicap Asiatique -1.5";
+            } else if (sport === "hockey") {
+                blocLigneHandicap.style.display = "block";
+                titreLigne.textContent = "⚖️ Quelle ligne de Puck Line ?";
+                aideLigne.textContent = "Choisis la ligne proposée par ton bookmaker.";
+                labelLigne1.textContent = "Puck Line -1.5";
+                labelLigne2.textContent = "Puck Line -2.5";
+            } else {
+                blocLigneHandicap.style.display = "none";
+            }
+
+            // --- Détermine le suffixe du label AH selon la ligne choisie ---
+            const ligneChoisie = document.querySelector('input[name="ligne_handicap"]:checked');
+            const ligneVal = ligneChoisie ? ligneChoisie.value : "0.5";
+            const suffixeLigne = ligneVal === "1.5" ? "1.5" : "0.5";
+
             if (sport === "tennis") {
                 blocSurface.style.display = "block";
                 blocFatigue.style.display = "block";
                 blocCalendrier.style.display = "none";
                 blocCalendrierBasket.style.display = "none";
-                blocAh15.style.display = "none";
                 eq1.textContent = "Joueur 1";
                 eq2.textContent = "Joueur 2";
                 c1.textContent = "Cote Joueur 1 — Ouverture / Fermeture";
@@ -370,7 +408,6 @@
                 blocFatigue.style.display = "none";
                 blocCalendrier.style.display = "none";
                 blocCalendrierBasket.style.display = "block";
-                blocAh15.style.display = "none";
                 eq1.textContent = "Équipe 1 (à domicile)";
                 eq2.textContent = "Équipe 2 (à l'extérieur)";
                 c1.textContent = "Cote Équipe 1 — Ouverture / Fermeture";
@@ -395,7 +432,6 @@
                 blocFatigue.style.display = "none";
                 blocCalendrier.style.display = "block";
                 blocCalendrierBasket.style.display = "none";
-                blocAh15.style.display = "block";
                 titreCal.textContent = "🏒 Calendrier Hockey";
                 eq1.textContent = "Équipe 1 (à domicile)";
                 eq2.textContent = "Équipe 2 (à l'extérieur)";
@@ -413,17 +449,14 @@
                 seg.textContent = "5 derniers scores globaux";
                 h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
                 ah.textContent = "Cote Money Line — " + fav.nom + " (incl. prolongation)";
-                ah15.textContent = "Cote Puck Line -2.5 — " + fav.nom;
-                aideAh15.textContent = "Le favori doit gagner par 3 buts ou plus (ex: 4-0, 5-1)";
                 ov.textContent = labelOver;
-                bt.textContent = "Cote Puck Line -1.5 — " + fav.nom + " (gagne par 2+)";
+                bt.textContent = "Cote Puck Line -" + suffixeLigne + " — " + fav.nom;
                 aideSd.textContent = "Format : buts_pour-buts_contre (ex: 4-2, 3-1)";
             } else {
                 blocSurface.style.display = "none";
                 blocFatigue.style.display = "none";
                 blocCalendrier.style.display = "block";
                 blocCalendrierBasket.style.display = "none";
-                blocAh15.style.display = "block";
                 titreCal.textContent = "📅 Calendrier Football";
                 eq1.textContent = "Équipe 1 (à domicile)";
                 eq2.textContent = "Équipe 2 (à l'extérieur)";
@@ -440,9 +473,7 @@
                 feg.textContent = "5 derniers résultats globaux (V/N/D)";
                 seg.textContent = "5 derniers scores globaux";
                 h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
-                ah.textContent = "Cote Handicap Asiatique -0.5 — " + fav.nom;
-                ah15.textContent = "Cote Handicap Asiatique -1.5 — " + fav.nom;
-                aideAh15.textContent = "Le favori doit gagner par 2 buts ou plus (ex: 2-0, 3-1)";
+                ah.textContent = "Cote Handicap Asiatique -" + suffixeLigne + " — " + fav.nom;
                 ov.textContent = labelOver;
                 bt.textContent = "Cote BTTS Oui";
                 aideSd.textContent = "Format : buts_pour-buts_contre, séparés par des virgules";
@@ -454,6 +485,7 @@
         if (inputEquipe1) inputEquipe1.addEventListener("input", majLabels);
         if (inputEquipe2) inputEquipe2.addEventListener("input", majLabels);
         document.querySelectorAll('input[name="favori"]').forEach(r => r.addEventListener("change", majLabels));
+        document.querySelectorAll('input[name="ligne_handicap"]').forEach(r => r.addEventListener("change", majLabels));
         majLabels();
     </script>
 </body>
