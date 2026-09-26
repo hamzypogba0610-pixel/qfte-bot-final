@@ -27,6 +27,7 @@ async def analyser(
     equipe2: str = Form(...),
     surface: str = Form("dur"),
     favori: str = Form("equipe1"),
+    ligne_handicap: str = Form("0.5"),
     cote_ouv_1: float = Form(...),
     cote_ferm_1: float = Form(...),
     cote_ouv_2: float = Form(...),
@@ -41,16 +42,13 @@ async def analyser(
     scores_ext_glob_5: str = Form(""),
     h2h_5: str = Form(""),
     cote_ah: float = Form(...),
-    cote_ah_15: float = Form(0.0),
     cote_over25: float = Form(...),
     cote_btts: float = Form(0.0),
     volume: int = Form(...),
-    # Champs tennis
     matchs_7j_j1: int = Form(0),
     matchs_7j_j2: int = Form(0),
     matchs_14j_j1: int = Form(0),
     matchs_14j_j2: int = Form(0),
-    # Champs calendrier football / hockey
     matchs_7j_dom: int = Form(0),
     matchs_14j_dom: int = Form(0),
     jours_repos_dom: int = Form(7),
@@ -61,7 +59,6 @@ async def analyser(
     jours_repos_ext: int = Form(7),
     competition_suivante_ext: str = Form(""),
     jours_avant_suivant_ext: int = Form(7),
-    # Champs calendrier basket
     jours_repos_dom_basket: int = Form(2),
     matchs_4j_dom_basket: int = Form(0),
     voyage_long_dom_basket: str = Form(""),
@@ -78,12 +75,12 @@ async def analyser(
         "equipe2": equipe2,
         "surface": surface,
         "favori": favori,
+        "ligne_handicap": ligne_handicap,
         "cote_ouverture": cote_ouv_1,
         "cote_actuelle": cote_ferm_1,
         "cote_ouv_2": cote_ouv_2,
         "cote_ferm_2": cote_ferm_2,
         "cote_ah": cote_ah,
-        "cote_ah_15": cote_ah_15,
         "cote_over25": cote_over25,
         "cote_btts": cote_btts,
         "volume": volume,
@@ -198,4 +195,4 @@ async def dashboard(request: Request):
             "roi": roi,
             "dernieres": dernieres,
         },
-)
+        )
