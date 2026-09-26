@@ -10,13 +10,15 @@
         h2 { color: #facc15; margin-top: 25px; font-size: 16px; border-bottom: 1px solid #333; padding-bottom: 5px; }
         label { display: block; margin-top: 12px; font-weight: bold; font-size: 14px; }
         input, select { width: 100%; padding: 10px; margin-top: 4px; border-radius: 6px; border: 1px solid #333; background: #1a1a1a; color: #eee; box-sizing: border-box; }
-        input[type="checkbox"] { width: auto; margin-right: 8px; }
+        input[type="checkbox"], input[type="radio"] { width: auto; margin-right: 8px; }
         button { margin-top: 20px; width: 100%; padding: 12px; background: #4ade80; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 16px; }
         .lien-dashboard { text-align: center; margin-top: 10px; }
         .lien-dashboard a { color: #60a5fa; text-decoration: none; }
         .aide { color: #9ca3af; font-size: 12px; margin-top: 2px; font-weight: normal; }
         .row { display: flex; gap: 8px; }
         .row > div { flex: 1; }
+        .bloc-favori { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #22d3ee; }
+        .bloc-favori h3 { color: #22d3ee; margin-top: 0; font-size: 14px; }
         .bloc-calendrier { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #3b82f6; }
         .bloc-calendrier h3 { color: #3b82f6; margin-top: 0; font-size: 14px; }
         .bloc-calendrier-basket { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #a3e635; }
@@ -56,6 +58,25 @@
 
         <label id="label_equipe2">Équipe 2 (à l'extérieur)</label>
         <input type="text" name="equipe2" required>
+
+        <div id="bloc_favori">
+            <div class="bloc-favori">
+                <h3>⭐ Quel est le favori du match ?</h3>
+                <div class="aide" style="margin-bottom: 8px;">
+                    Le bot calcule les marchés "favori" (Handicap, ML, Spread, Vainqueur, Puck Line...) sur l'équipe choisie.
+                </div>
+
+                <label class="coche-bloc">
+                    <input type="radio" name="favori" value="equipe1" checked>
+                    Équipe 1 (domicile)
+                </label>
+
+                <label class="coche-bloc">
+                    <input type="radio" name="favori" value="equipe2">
+                    Équipe 2 (extérieur)
+                </label>
+            </div>
+        </div>
 
         <div id="bloc_fatigue" style="display: none;">
             <h2>💪 Fatigue (tennis uniquement)</h2>
@@ -167,7 +188,7 @@
                     Voyage long (côte à côte)
                 </label>
             </div>
-    </div>
+                    </div>
 
         
     <h2>📊 Cotes 1X2 (les 2 équipes)</h2>
@@ -230,12 +251,14 @@
     <input type="number" name="volume" value="50000" required>
 
     <button type="submit">Analyser</button>
-    </form>
+                    </form>
 
     
     <script>
         const selectSport = document.getElementById("select_sport");
         const inputCompetition = document.querySelector('input[name="competition"]');
+        const inputEquipe1 = document.querySelector('input[name="equipe1"]');
+        const inputEquipe2 = document.querySelector('input[name="equipe2"]');
         const blocSurface = document.getElementById("bloc_surface");
         const blocFatigue = document.getElementById("bloc_fatigue");
         const blocCalendrier = document.getElementById("bloc_calendrier");
@@ -244,20 +267,15 @@
         function detecterLigneOver(sport, competition) {
             const comp = (competition || "").toLowerCase().trim();
 
-            // --- HOCKEY ---
             if (sport === "hockey") {
                 if (comp.includes("nhl")) return "Cote Over/Under 5.5 (buts)";
                 if (comp.includes("khl")) return "Cote Over/Under 4.5 (buts)";
                 if (comp.includes("shl") || comp.includes("suède") || comp.includes("liiga") || comp.includes("finlande") || comp.includes("del") || comp.includes("allemagne")) {
                     return "Cote Over/Under 5.0 (buts)";
                 }
-                if (comp.includes("world cup") || comp.includes("olympic") || comp.includes("jo")) {
-                    return "Cote Over/Under 5.5 (buts)";
-                }
                 return "Cote Over/Under 5.5 (buts)";
             }
 
-            // --- BASKET ---
             if (sport === "basket") {
                 if (comp.includes("nba")) return "Cote Over/Under 220.5";
                 if (comp.includes("euroleague") || comp.includes("euroligue") || comp.includes("euro")) {
@@ -266,7 +284,6 @@
                 return "Cote Over/Under 180.5";
             }
 
-            // --- TENNIS ---
             if (sport === "tennis") {
                 if (comp.includes("roland") || comp.includes("wimbledon") || comp.includes("us open") || comp.includes("australian") || comp.includes("grand chelem") || comp.includes("grand slam")) {
                     return "Cote Over/Under 32.5 jeux";
@@ -276,8 +293,15 @@
                 return "Cote Over/Under 22.5 jeux";
             }
 
-            // --- FOOTBALL (défaut) ---
             return "Cote Over/Under 2.5";
+        }
+
+        function getNomFavori(sport) {
+            const favori = document.querySelector('input[name="favori"]:checked');
+            const valeur = favori ? favori.value : "equipe1";
+            const nom1 = (inputEquipe1 && inputEquipe1.value) ? inputEquipe1.value : (sport === "tennis" ? "Joueur 1" : "Équipe 1");
+            const nom2 = (inputEquipe2 && inputEquipe2.value) ? inputEquipe2.value : (sport === "tennis" ? "Joueur 2" : "Équipe 2");
+            return valeur === "equipe2" ? { nom: nom2, autre: nom1, valeur: "equipe2" } : { nom: nom1, autre: nom2, valeur: "equipe1" };
         }
 
         function majLabels() {
@@ -305,6 +329,7 @@
             const titreCal = document.getElementById("titre_calendrier");
 
             const labelOver = detecterLigneOver(sport, competition);
+            const fav = getNomFavori(sport);
 
             if (sport === "tennis") {
                 blocSurface.style.display = "block";
@@ -326,9 +351,9 @@
                 feg.textContent = "5 derniers résultats globaux (V/N/D)";
                 seg.textContent = "5 derniers scores globaux (en sets)";
                 h2h.textContent = "5 derniers H2H (Joueur1-Joueur2, en sets)";
-                ah.textContent = "Cote Vainqueur Joueur 1";
+                ah.textContent = "Cote Vainqueur — " + fav.nom;
                 ov.textContent = labelOver;
-                bt.textContent = "Cote Score Exact Sets (ex: 2-0)";
+                bt.textContent = "Cote Score Exact Sets — " + fav.nom + " (ex: 2-0)";
                 aideSd.textContent = "Format : sets_pour-sets_contre (ex: 2-0, 2-1, 0-2)";
             } else if (sport === "basket") {
                 blocSurface.style.display = "none";
@@ -350,9 +375,9 @@
                 feg.textContent = "5 derniers résultats globaux (V/N/D)";
                 seg.textContent = "5 derniers scores globaux";
                 h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
-                ah.textContent = "Cote Money Line Domicile";
+                ah.textContent = "Cote Money Line — " + fav.nom;
                 ov.textContent = labelOver;
-                bt.textContent = "Cote Spread -4.5 (Domicile)";
+                bt.textContent = "Cote Spread -4.5 — " + fav.nom;
                 aideSd.textContent = "Format : points_pour-points_contre (ex: 108-102)";
             } else if (sport === "hockey") {
                 blocSurface.style.display = "none";
@@ -375,9 +400,9 @@
                 feg.textContent = "5 derniers résultats globaux (V/N/D)";
                 seg.textContent = "5 derniers scores globaux";
                 h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
-                ah.textContent = "Cote Money Line Domicile (incl. prolongation)";
+                ah.textContent = "Cote Money Line — " + fav.nom + " (incl. prolongation)";
                 ov.textContent = labelOver;
-                bt.textContent = "Cote Puck Line -1.5 (Domicile — gagne par 2+)";
+                bt.textContent = "Cote Puck Line -1.5 — " + fav.nom + " (gagne par 2+)";
                 aideSd.textContent = "Format : buts_pour-buts_contre (ex: 4-2, 3-1)";
             } else {
                 blocSurface.style.display = "none";
@@ -400,7 +425,7 @@
                 feg.textContent = "5 derniers résultats globaux (V/N/D)";
                 seg.textContent = "5 derniers scores globaux";
                 h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
-                ah.textContent = "Cote Handicap Asiatique -0.5";
+                ah.textContent = "Cote Handicap Asiatique -0.5 — " + fav.nom;
                 ov.textContent = labelOver;
                 bt.textContent = "Cote BTTS Oui";
                 aideSd.textContent = "Format : buts_pour-buts_contre, séparés par des virgules";
@@ -408,9 +433,10 @@
         }
 
         selectSport.addEventListener("change", majLabels);
-        if (inputCompetition) {
-            inputCompetition.addEventListener("input", majLabels);
-        }
+        if (inputCompetition) inputCompetition.addEventListener("input", majLabels);
+        if (inputEquipe1) inputEquipe1.addEventListener("input", majLabels);
+        if (inputEquipe2) inputEquipe2.addEventListener("input", majLabels);
+        document.querySelectorAll('input[name="favori"]').forEach(r => r.addEventListener("change", majLabels));
         majLabels();
     </script>
 </body>
