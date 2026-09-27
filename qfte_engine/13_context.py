@@ -1,6 +1,6 @@
 """
 Module de contexte QFTE V23.0.
-Analyse la forme, les scores, le H2H et les cotes des 2 équipes.
+Analyse la forme, les scores, le H2H (dom + ext) et les cotes des 2 équipes.
 """
 
 
@@ -27,10 +27,7 @@ def calculer_score_forme(resultats):
 
 
 def parser_scores(texte):
-    """
-    Parse '2-1,1-0,3-2' → [(2,1),(1,0),(3,2)]
-    Chaque tuple = (buts_pour, buts_contre)
-    """
+    """Parse '2-1,1-0,3-2' → [(2,1),(1,0),(3,2)] - format (buts_equipe1, buts_equipe2)"""
     if not texte:
         return []
     scores = []
@@ -46,7 +43,6 @@ def parser_scores(texte):
 
 
 def calculer_moyennes(scores):
-    """Renvoie {'marques': X, 'encaisses': Y, 'n': N}"""
     if not scores:
         return {"marques": None, "encaisses": None, "n": 0}
     n = len(scores)
@@ -60,7 +56,6 @@ def calculer_moyennes(scores):
 
 
 def _blend(court, glob_):
-    """Combinaison pondérée : 60% spécifique, 40% global."""
     if court["n"] > 0 and glob_["n"] > 0:
         return {
             "marques": round(court["marques"] * 0.6 + glob_["marques"] * 0.4, 3),
@@ -88,23 +83,43 @@ def analyser_contexte(data):
     sc_ext = calculer_moyennes(parser_scores(match.get("scores_ext_5", "")))
     sc_ext_glob = calculer_moyennes(parser_scores(match.get("scores_ext_glob_5", "")))
 
-    moy_dom = _blend(sc_dom, sc_dom_glob)     # équipe 1
-    moy_ext = _blend(sc_ext, sc_ext_glob)     # équipe 2
+    moy_dom = _blend(sc_dom, sc_dom_glob)
+    moy_ext = _blend(sc_ext, sc_ext_glob)
 
-    # ---------- H2H ----------
-    h2h = parser_scores(match.get("h2h_5", ""))
+    # ---------- H2H (séparé dom / ext) ----------
+    h2h_dom = parser_scores(match.get("h2h_dom_5", ""))
+    h2h_ext = parser_scores(match.get("h2h_ext_5", ""))
+    h2h_tous = h2h_dom + h2h_ext
+
     h2h_analyse = {}
-    if h2h:
-        totaux = [h + a for h, a in h2h]
+    if h2h_tous:
+        totaux = [h + a for h, a in h2h_tous]
+        v_dom = sum(1 for h, a in h2h_tous if h > a)
+        nuls = sum(1 for h, a in h2h_tous if h == a)
+        v_ext = sum(1 for h, a in h2h_tous if h < a)
+
+        # Détail dom / ext
+        v_dom_chez_dom = sum(1 for h, a in h2h_dom if h > a)
+        v_dom_chez_ext = sum(1 for h, a in h2h_ext if h > a)
+
+        if v_dom > v_ext:
+            domine = "dom"
+        elif v_ext > v_dom:
+            domine = "ext"
+        else:
+            domine = "equilibre"
+
         h2h_analyse = {
-            "n": len(h2h),
+            "n": len(h2h_tous),
+            "n_dom": len(h2h_dom),
+            "n_ext": len(h2h_ext),
             "moy_buts": round(sum(totaux) / len(totaux), 2),
-            "v_dom": sum(1 for h, a in h2h if h > a),
-            "nuls": sum(1 for h, a in h2h if h == a),
-            "v_ext": sum(1 for h, a in h2h if h < a),
-            "domine": ("dom" if sum(1 for h, a in h2h if h > a) > sum(1 for h, a in h2h if h < a)
-                       else ("ext" if sum(1 for h, a in h2h if h < a) > sum(1 for h, a in h2h if h > a)
-                             else "equilibre")),
+            "v_dom": v_dom,
+            "nuls": nuls,
+            "v_ext": v_ext,
+            "v_dom_chez_dom": v_dom_chez_dom,
+            "v_dom_chez_ext": v_dom_chez_ext,
+            "domine": domine,
         }
 
     # ---------- COTES 2 ÉQUIPES ----------
