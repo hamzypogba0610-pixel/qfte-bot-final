@@ -61,6 +61,22 @@ def _config_hockey(competition):
     return HOCKEY_CONFIG["default"]
 
 
+def _ligne_over_effective(match, ligne_defaut):
+    """
+    Retourne la ligne Over effective :
+    - Si l'utilisateur a saisi une ligne custom → on l'utilise
+    - Sinon → ligne par défaut
+    """
+    custom = match.get("ligne_over", "") or ""
+    custom = str(custom).strip()
+    if not custom:
+        return float(ligne_defaut)
+    try:
+        return float(custom)
+    except (ValueError, TypeError):
+        return float(ligne_defaut)
+
+
 def poisson(k, lam):
     return (lam ** k) * math.exp(-lam) / math.factorial(k)
 
@@ -160,6 +176,7 @@ def analyser_marche(data):
 def _analyser_football(data, match):
     favori = (match.get("favori", "equipe1") or "equipe1").lower()
     ligne_handicap = str(match.get("ligne_handicap", "0.5") or "0.5")
+    ligne_over = _ligne_over_effective(match, 2.5)
 
     if favori == "equipe2":
         co = float(match.get("cote_ouv_2", 2.0) or 2.0)
@@ -241,10 +258,10 @@ def _analyser_football(data, match):
 
     # --- Détermine le seuil de victoire selon la ligne choisie ---
     if ligne_handicap == "1.5":
-        seuil = 2  # Gagne par 2+
+        seuil = 2
         nom_ligne = "Handicap Asiatique -1.5"
     else:
-        seuil = 1  # Gagne par 1+ (= gagne tout court)
+        seuil = 1
         nom_ligne = "Handicap Asiatique -0.5"
 
     # --- Calcul de P(favori gagne par seuil+) ---
@@ -260,27 +277,27 @@ def _analyser_football(data, match):
                     proba_ah += p
     proba_ah = max(0.05, min(0.90, proba_ah))
 
-    # --- Over/Under ---
-    proba_over25 = proba_over(lambda_home, lambda_away, 2.5)
-    proba_under25 = 1 - proba_over25
+    # --- Over/Under avec ligne dynamique ---
+    proba_over_val = proba_over(lambda_home, lambda_away, ligne_over)
+    proba_under_val = 1 - proba_over_val
     proba_btts_val = proba_btts(lambda_home, lambda_away)
 
-    cote_over25_brute = float(match.get("cote_over25") or 0)
-    if cote_over25_brute <= 0:
-        cote_over25_brute = 1 / (proba_over25 * (1 + marge))
+    cote_over_brute = float(match.get("cote_over25") or 0)
+    if cote_over_brute <= 0:
+        cote_over_brute = 1 / (proba_over_val * (1 + marge))
 
-    cote_under25 = 1 / (proba_under25 * (1 + marge)) if proba_under25 > 0 else 10.0
-    ev_over = (proba_over25 * cote_over25_brute) - 1
-    ev_under = (proba_under25 * cote_under25) - 1
+    cote_under_val = 1 / (proba_under_val * (1 + marge)) if proba_under_val > 0 else 10.0
+    ev_over = (proba_over_val * cote_over_brute) - 1
+    ev_under = (proba_under_val * cote_under_val) - 1
 
     if ev_over >= ev_under:
-        selection_ou = "Over 2.5"
-        proba_ou = proba_over25
-        cote_ou = cote_over25_brute
+        selection_ou = "Over " + str(ligne_over)
+        proba_ou = proba_over_val
+        cote_ou = cote_over_brute
     else:
-        selection_ou = "Under 2.5"
-        proba_ou = proba_under25
-        cote_ou = cote_under25
+        selection_ou = "Under " + str(ligne_over)
+        proba_ou = proba_under_val
+        cote_ou = cote_under_val
 
     cote_ah_f = float(match.get("cote_ah") or (1 / (proba_ah * (1 + marge))))
     cote_btts_f = float(match.get("cote_btts") or (1 / (proba_btts_val * (1 + marge))))
@@ -296,6 +313,7 @@ def _analyser_football(data, match):
         "favori": favori,
         "nom": nom_fav,
         "ligne_handicap": ligne_handicap,
+        "ligne_over": ligne_over,
     }
     data["impact_calendrier_lambda"] = {
         "dom": round(impact_cal_dom, 3),
@@ -311,7 +329,7 @@ def _analyser_football(data, match):
         {"nom": nom_ligne, "selection": nom_fav,
          "cote": round(cote_ah_f, 2), "cote_ouverture": round(cote_ah_f * 1.02, 2),
          "proba_juste": round(proba_ah, 4), "mouvement": round(mouvement, 4)},
-        {"nom": "Over/Under 2.5", "selection": selection_ou,
+        {"nom": "Over/Under " + str(ligne_over), "selection": selection_ou,
          "cote": round(cote_ou, 2), "cote_ouverture": round(cote_ou * 1.02, 2),
          "proba_juste": round(proba_ou, 4), "mouvement": round(mouvement * 0.8, 4)},
         {"nom": "BTTS", "selection": "Oui",
@@ -324,6 +342,8 @@ def _analyser_football(data, match):
 
 def _analyser_basket(data, match):
     favori = (match.get("favori", "equipe1") or "equipe1").lower()
+    cfg = _config_basket(match.get("competition", ""))
+    ligne_totale = _ligne_over_effective(match, cfg["total_defaut"])
 
     if favori == "equipe2":
         co = float(match.get("cote_ouv_2", 1.85) or 1.85)
@@ -341,8 +361,6 @@ def _analyser_basket(data, match):
     forme = contexte.get("forme", {})
     h2h = contexte.get("h2h", {})
 
-    cfg = _config_basket(competition)
-    ligne_totale = cfg["total_defaut"]
     sigma_total = cfg["sigma_total"]
     sigma_ecart = cfg["sigma_ecart"]
     home_advantage = cfg["home_court_advantage"]
@@ -458,7 +476,7 @@ def _analyser_basket(data, match):
         "sigma_total": sigma_total,
         "home_advantage": home_advantage,
     }
-    data["favori_info"] = {"favori": favori, "nom": nom_fav}
+    data["favori_info"] = {"favori": favori, "nom": nom_fav, "ligne_over": ligne_totale}
     data["impact_calendrier_basket"] = {
         "dom_points": round(impact_cal_dom_pts, 2),
         "ext_points": round(impact_cal_ext_pts, 2),
@@ -478,7 +496,7 @@ def _analyser_basket(data, match):
         {"nom": "Spread -4.5", "selection": nom_fav,
          "cote": round(cote_sp_f, 2), "cote_ouverture": round(cote_sp_f * 1.02, 2),
          "proba_juste": round(proba_spread, 4), "mouvement": round(mouvement * 0.8, 4)},
-        {"nom": "Total Points", "selection": selection_ou,
+        {"nom": "Total Points " + str(ligne_totale), "selection": selection_ou,
          "cote": round(cote_ou, 2), "cote_ouverture": round(cote_ou * 1.02, 2),
          "proba_juste": round(proba_ou, 4), "mouvement": round(mouvement * 0.6, 4)},
     ]
@@ -487,6 +505,8 @@ def _analyser_basket(data, match):
 
 def _analyser_tennis(data, match):
     favori = (match.get("favori", "equipe1") or "equipe1").lower()
+    cfg = _config_tennis(match.get("competition", ""))
+    ligne_jeux = _ligne_over_effective(match, cfg["ligne_jeux"])
 
     if favori == "equipe2":
         co = float(match.get("cote_ouv_2", 1.85) or 1.85)
@@ -503,11 +523,8 @@ def _analyser_tennis(data, match):
 
     contexte = data.get("contexte", {})
     forme = contexte.get("forme", {})
-    h2h = contexte.get("h2h", {})
 
-    cfg = _config_tennis(competition)
     best_of = cfg["best_of"]
-    ligne_jeux = cfg["ligne_jeux"]
     sigma_jeux = cfg["sigma_jeux"]
     moyenne_jeux_set = cfg["moyenne_jeux_set"]
 
@@ -581,13 +598,10 @@ def _analyser_tennis(data, match):
 
     if best_of == 3:
         proba_2_0 = p_set_fav ** 2
-    else:
-        proba_2_0 = p_set_fav ** 3
-
-    if best_of == 3:
         proba_2_1 = 2 * (p_set_fav ** 2) * (1 - p_set_fav)
         nb_sets_moyen = 2 * proba_2_0 + 3 * proba_2_1 + 2 * (1 - proba_ml_fav)
     else:
+        proba_2_0 = p_set_fav ** 3
         proba_3_1 = 3 * (p_set_fav ** 3) * (1 - p_set_fav)
         proba_3_2 = 6 * (p_set_fav ** 3) * ((1 - p_set_fav) ** 2)
         nb_sets_moyen = 3 * proba_2_0 + 4 * proba_3_1 + 5 * proba_3_2
@@ -638,7 +652,7 @@ def _analyser_tennis(data, match):
         "diff": round(diff_fatigue, 3),
         "impact_proba": round(impact_fatigue, 4),
     }
-    data["favori_info"] = {"favori": favori, "nom": nom_fav}
+    data["favori_info"] = {"favori": favori, "nom": nom_fav, "ligne_over": ligne_jeux}
     data["tennis_config"] = {
         "type": ("Grand Chelem" if best_of == 5 else
                  ("WTA" if "wta" in (competition or "").lower() else
@@ -660,7 +674,7 @@ def _analyser_tennis(data, match):
         {"nom": "Vainqueur", "selection": nom_fav,
          "cote": round(cote_ml_f, 2), "cote_ouverture": round(cote_ml_f * 1.02, 2),
          "proba_juste": round(proba_ml_fav, 4), "mouvement": round(mouvement, 4)},
-        {"nom": "Over/Under Jeux", "selection": selection_ou,
+        {"nom": "Over/Under " + str(ligne_jeux) + " jeux", "selection": selection_ou,
          "cote": round(cote_ou, 2), "cote_ouverture": round(cote_ou * 1.02, 2),
          "proba_juste": round(proba_ou, 4), "mouvement": round(mouvement * 0.8, 4)},
         {"nom": "Score Exact Sets", "selection": nom_fav + " 2-0",
@@ -674,13 +688,14 @@ def _analyser_tennis(data, match):
 def _analyser_hockey(data, match):
     favori = (match.get("favori", "equipe1") or "equipe1").lower()
     ligne_handicap = str(match.get("ligne_handicap", "0.5") or "0.5")
+    cfg = _config_hockey(match.get("competition", ""))
+    ligne_totale = _ligne_over_effective(match, cfg["total_defaut"])
 
-    # --- Détermine le seuil selon la ligne choisie ---
     if ligne_handicap == "1.5":
-        seuil = 2  # Gagne par 2+ (Puck Line -1.5)
+        seuil = 2
         nom_ligne = "Puck Line -1.5"
     else:
-        seuil = 3  # Gagne par 3+ (Puck Line -2.5)
+        seuil = 3
         nom_ligne = "Puck Line -2.5"
 
     if favori == "equipe2":
@@ -700,8 +715,6 @@ def _analyser_hockey(data, match):
     h2h = contexte.get("h2h", {})
     scores_ctx = contexte.get("scores", {})
 
-    cfg = _config_hockey(competition)
-    ligne_totale = cfg["total_defaut"]
     home_advantage = cfg["home_advantage"]
     ligne_periode = cfg["ligne_periode"]
 
@@ -757,12 +770,10 @@ def _analyser_hockey(data, match):
     lambda_home = max(0.20, lambda_home)
     lambda_away = max(0.20, lambda_away)
 
-    # --- Probas 1X2 ---
     p_home, p_nul, p_away = proba_resultat_1x2(lambda_home, lambda_away)
     proba_home_ml = p_home + p_nul * 0.55
     proba_away_ml = p_away + p_nul * 0.45
 
-    # --- Puck Line selon la ligne choisie ---
     proba_pl_home = 0.0
     proba_pl_away = 0.0
     for i in range(0, 12):
@@ -776,7 +787,6 @@ def _analyser_hockey(data, match):
     proba_pl_home = max(0.02, min(0.85, proba_pl_home))
     proba_pl_away = max(0.02, min(0.85, proba_pl_away))
 
-    # --- Sélection selon favori ---
     if favori == "equipe2":
         proba_ml_selection = proba_away_ml
         proba_pl_selection = proba_pl_away
@@ -784,7 +794,7 @@ def _analyser_hockey(data, match):
         proba_ml_selection = proba_home_ml
         proba_pl_selection = proba_pl_home
 
-    # --- Over/Under ---
+    # --- Over/Under avec ligne dynamique ---
     proba_over = proba_over_total(lambda_home, lambda_away, ligne_totale)
     proba_under = 1 - proba_over
 
@@ -863,6 +873,7 @@ def _analyser_hockey(data, match):
         "favori": favori,
         "nom": nom_fav,
         "ligne_handicap": ligne_handicap,
+        "ligne_over": ligne_totale,
     }
     data["auto_ou"] = {
         "ev_over": round(ev_over, 4),
@@ -881,7 +892,7 @@ def _analyser_hockey(data, match):
         {"nom": nom_ligne, "selection": nom_fav,
          "cote": round(cote_pl_f, 2), "cote_ouverture": round(cote_pl_f * 1.02, 2),
          "proba_juste": round(proba_pl_selection, 4), "mouvement": round(mouvement * 0.8, 4)},
-        {"nom": "Total Buts", "selection": selection_ou,
+        {"nom": "Total Buts " + str(ligne_totale), "selection": selection_ou,
          "cote": round(cote_ou, 2), "cote_ouverture": round(cote_ou * 1.02, 2),
          "proba_juste": round(proba_ou, 4), "mouvement": round(mouvement * 0.6, 4)},
         {"nom": "Total " + meilleure_periode["nom"] + " " + str(ligne_periode),
