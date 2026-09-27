@@ -63,18 +63,35 @@ def _config_hockey(competition):
 
 def _ligne_over_effective(match, ligne_defaut):
     """
-    Retourne la ligne Over effective :
-    - Si l'utilisateur a saisi une ligne custom → on l'utilise
-    - Sinon → ligne par défaut
+    Retourne la ligne Over effective par ordre de priorité :
+    1. ligne_over_custom (champ libre saisi par l'utilisateur) → PRIORITAIRE
+    2. ligne_over (radio sélectionnée)
+    3. ligne_defaut (config sport/compétition)
     """
-    custom = match.get("ligne_over", "") or ""
-    custom = str(custom).strip()
-    if not custom:
-        return float(ligne_defaut)
-    try:
-        return float(custom)
-    except (ValueError, TypeError):
-        return float(ligne_defaut)
+    # Priorité 1 : champ libre
+    custom = match.get("ligne_over_custom", "") or ""
+    custom = str(custom).strip().replace(",", ".")
+    if custom:
+        try:
+            val = float(custom)
+            if val > 0:
+                return val
+        except (ValueError, TypeError):
+            pass
+
+    # Priorité 2 : radio
+    radio = match.get("ligne_over", "") or ""
+    radio = str(radio).strip().replace(",", ".")
+    if radio:
+        try:
+            val = float(radio)
+            if val > 0:
+                return val
+        except (ValueError, TypeError):
+            pass
+
+    # Priorité 3 : défaut
+    return float(ligne_defaut)
 
 
 def poisson(k, lam):
@@ -256,7 +273,6 @@ def _analyser_football(data, match):
     lambda_home = max(0.20, lambda_home)
     lambda_away = max(0.20, lambda_away)
 
-    # --- Détermine le seuil de victoire selon la ligne choisie ---
     if ligne_handicap == "1.5":
         seuil = 2
         nom_ligne = "Handicap Asiatique -1.5"
@@ -264,7 +280,6 @@ def _analyser_football(data, match):
         seuil = 1
         nom_ligne = "Handicap Asiatique -0.5"
 
-    # --- Calcul de P(favori gagne par seuil+) ---
     proba_ah = 0.0
     for i in range(0, 12):
         for j in range(0, 12):
@@ -277,7 +292,6 @@ def _analyser_football(data, match):
                     proba_ah += p
     proba_ah = max(0.05, min(0.90, proba_ah))
 
-    # --- Over/Under avec ligne dynamique ---
     proba_over_val = proba_over(lambda_home, lambda_away, ligne_over)
     proba_under_val = 1 - proba_over_val
     proba_btts_val = proba_btts(lambda_home, lambda_away)
@@ -794,11 +808,9 @@ def _analyser_hockey(data, match):
         proba_ml_selection = proba_home_ml
         proba_pl_selection = proba_pl_home
 
-    # --- Over/Under avec ligne dynamique ---
     proba_over = proba_over_total(lambda_home, lambda_away, ligne_totale)
     proba_under = 1 - proba_over
 
-    # --- Périodes ---
     probas_periodes = []
     for periode, part in REPARTITION_PERIODES.items():
         lam_h_p = lambda_home * part
