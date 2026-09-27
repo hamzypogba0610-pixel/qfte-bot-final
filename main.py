@@ -29,6 +29,7 @@ async def analyser(
     favori: str = Form("equipe1"),
     ligne_handicap: str = Form("0.5"),
     ligne_over: str = Form(""),
+    ligne_over_custom: str = Form(""),
     cote_ouv_1: float = Form(...),
     cote_ferm_1: float = Form(...),
     cote_ouv_2: float = Form(...),
@@ -79,6 +80,7 @@ async def analyser(
         "favori": favori,
         "ligne_handicap": ligne_handicap,
         "ligne_over": ligne_over,
+        "ligne_over_custom": ligne_over_custom,
         "cote_ouverture": cote_ouv_1,
         "cote_actuelle": cote_ferm_1,
         "cote_ouv_2": cote_ouv_2,
@@ -199,4 +201,4 @@ async def dashboard(request: Request):
             "roi": roi,
             "dernieres": dernieres,
         },
-)
+    )
