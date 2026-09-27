@@ -8,6 +8,7 @@ from qfte_engine.historique import (
     calculer_roi,
     enregistrer_resultat,
 )
+import traceback
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -123,7 +124,24 @@ async def analyser(
         "back_to_back_ext_basket": bool(back_to_back_ext_basket),
     }
 
-    resultat = analyser_match(match)
+    try:
+        resultat = analyser_match(match)
+    except Exception as e:
+        erreur_html = f"""
+        <!DOCTYPE html>
+        <html><head><meta charset='UTF-8'><title>Erreur</title>
+        <style>body{{font-family:Arial;background:#0f0f0f;color:#eee;padding:15px;max-width:700px;margin:20px auto;}}
+        h1{{color:#ef4444;}} pre{{background:#1a1a1a;padding:15px;border-radius:8px;overflow-x:auto;color:#fca5a5;font-size:12px;line-height:1.5;}}
+        a{{color:#4ade80;}}</style></head>
+        <body>
+        <h1>🚨 Erreur détectée</h1>
+        <p><strong>{type(e).__name__} :</strong> {str(e)}</p>
+        <h2 style='color:#facc15;'>Traceback complet :</h2>
+        <pre>{traceback.format_exc()}</pre>
+        <a href='/'>← Retour au formulaire</a>
+        </body></html>
+        """
+        return HTMLResponse(content=erreur_html, status_code=500)
 
     return templates.TemplateResponse(
         request,
@@ -201,4 +219,4 @@ async def dashboard(request: Request):
             "roi": roi,
             "dernieres": dernieres,
         },
-    )
+        )
