@@ -26,6 +26,7 @@
         .bloc-calendrier-basket { background: #141414; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #a3e635; }
         .bloc-calendrier-basket h3 { color: #a3e635; margin-top: 0; font-size: 14px; }
         .coche-bloc { margin-top: 10px; }
+        .ligne-inline { display: inline-block; margin-right: 12px; margin-top: 6px; }
     </style>
 </head>
 <body>
@@ -95,6 +96,35 @@
                 <label class="coche-bloc">
                     <input type="radio" name="ligne_handicap" value="1.5">
                     <span id="label_ligne_2">Handicap Asiatique -1.5</span>
+                </label>
+            </div>
+        </div>
+
+        <div id="bloc_ligne_over">
+            <div class="bloc-ligne">
+                <h3 id="titre_ligne_over">🎯 Quelle ligne Over/Under ?</h3>
+                <div class="aide" style="margin-bottom: 8px;" id="aide_ligne_over">
+                    Choisis la ligne proposée par ton bookmaker.
+                </div>
+
+                <label class="ligne-inline">
+                    <input type="radio" name="ligne_over" value="" id="ligne_over_1">
+                    <span id="label_over_1">-</span>
+                </label>
+
+                <label class="ligne-inline">
+                    <input type="radio" name="ligne_over" value="" id="ligne_over_2" checked>
+                    <span id="label_over_2">-</span>
+                </label>
+
+                <label class="ligne-inline">
+                    <input type="radio" name="ligne_over" value="" id="ligne_over_3">
+                    <span id="label_over_3">-</span>
+                </label>
+
+                <label class="ligne-inline">
+                    <input type="radio" name="ligne_over" value="" id="ligne_over_4">
+                    <span id="label_over_4">-</span>
                 </label>
             </div>
         </div>
@@ -209,7 +239,7 @@
                     Voyage long (côte à côte)
                 </label>
             </div>
-    </div>
+                    </div>
 
         
     <h2>📊 Cotes 1X2 (les 2 équipes)</h2>
@@ -254,8 +284,17 @@
     <input type="text" name="scores_ext_glob_5" placeholder="Ex: 1-2,0-1,2-1,1-3,1-1" required>
 
     <h2>⚔️ Confrontations directes (H2H)</h2>
-    <label id="label_h2h">5 derniers scores H2H (Équipe1-Équipe2)</label>
-    <input type="text" name="h2h_5" placeholder="Ex: 2-1,1-1,0-2,3-0,1-0" required>
+    <div class="aide" style="margin-bottom: 10px;">
+        ⚠️ Les scores doivent TOUJOURS être au format <b>Équipe1-Équipe2</b> (celle à domicile en premier).
+    </div>
+
+    <label id="label_h2h_dom">5 derniers H2H — quand l'Équipe 1 reçoit (domicile)</label>
+    <input type="text" name="h2h_dom_5" placeholder="Ex: 2-1,1-1,3-0" required>
+    <div class="aide">Scores format Équipe1-Équipe2 (ex. Lyon 2 - 1 Marseille = 2-1)</div>
+
+    <label id="label_h2h_ext">5 derniers H2H — quand l'Équipe 1 se déplace (extérieur)</label>
+    <input type="text" name="h2h_ext_5" placeholder="Ex: 1-2,0-1,1-1" required>
+    <div class="aide">⚠️ Toujours Équipe1-Équipe2 (ex. Marseille 2 - 1 Lyon = 1-2)</div>
 
     <h2>🎯 Cotes des 3 marchés analysés</h2>
     <label id="label_ah">Cote Handicap Asiatique -0.5</label>
@@ -285,41 +324,67 @@
         const blocCalendrier = document.getElementById("bloc_calendrier");
         const blocCalendrierBasket = document.getElementById("bloc_calendrier_basket");
         const blocLigneHandicap = document.getElementById("bloc_ligne_handicap");
+        const blocLigneOver = document.getElementById("bloc_ligne_over");
         const titreLigne = document.getElementById("titre_ligne_handicap");
         const aideLigne = document.getElementById("aide_ligne_handicap");
         const labelLigne1 = document.getElementById("label_ligne_1");
         const labelLigne2 = document.getElementById("label_ligne_2");
+        const titreLigneOver = document.getElementById("titre_ligne_over");
+        const aideLigneOver = document.getElementById("aide_ligne_over");
+        const radioOver1 = document.getElementById("ligne_over_1");
+        const radioOver2 = document.getElementById("ligne_over_2");
+        const radioOver3 = document.getElementById("ligne_over_3");
+        const radioOver4 = document.getElementById("ligne_over_4");
+        const labelOver1 = document.getElementById("label_over_1");
+        const labelOver2 = document.getElementById("label_over_2");
+        const labelOver3 = document.getElementById("label_over_3");
+        const labelOver4 = document.getElementById("label_over_4");
 
-        function detecterLigneOver(sport, competition) {
+        function detecterLignesOver(sport, competition) {
             const comp = (competition || "").toLowerCase().trim();
 
             if (sport === "hockey") {
-                if (comp.includes("nhl")) return "Cote Over/Under 5.5 (buts)";
-                if (comp.includes("khl")) return "Cote Over/Under 4.5 (buts)";
-                if (comp.includes("shl") || comp.includes("suède") || comp.includes("liiga") || comp.includes("finlande") || comp.includes("del") || comp.includes("allemagne")) {
-                    return "Cote Over/Under 5.0 (buts)";
-                }
-                return "Cote Over/Under 5.5 (buts)";
+                if (comp.includes("khl")) return { lignes: ["3.5", "4.5", "5.5", "6.5"], defaut: "4.5" };
+                if (comp.includes("nhl")) return { lignes: ["4.5", "5.5", "6.5", "7.5"], defaut: "5.5" };
+                return { lignes: ["4.5", "5.5", "6.5", "7.5"], defaut: "5.5" };
             }
 
             if (sport === "basket") {
-                if (comp.includes("nba")) return "Cote Over/Under 220.5";
+                if (comp.includes("nba")) return { lignes: ["210.5", "220.5", "230.5", "240.5"], defaut: "220.5" };
                 if (comp.includes("euroleague") || comp.includes("euroligue") || comp.includes("euro")) {
-                    return "Cote Over/Under 160.5";
+                    return { lignes: ["150.5", "160.5", "170.5", "180.5"], defaut: "160.5" };
                 }
-                return "Cote Over/Under 180.5";
+                return { lignes: ["170.5", "180.5", "190.5", "200.5"], defaut: "180.5" };
             }
 
             if (sport === "tennis") {
                 if (comp.includes("roland") || comp.includes("wimbledon") || comp.includes("us open") || comp.includes("australian") || comp.includes("grand chelem") || comp.includes("grand slam")) {
-                    return "Cote Over/Under 32.5 jeux";
+                    return { lignes: ["30.5", "32.5", "34.5", "36.5"], defaut: "32.5" };
                 }
-                if (comp.includes("wta")) return "Cote Over/Under 21.5 jeux";
-                if (comp.includes("atp")) return "Cote Over/Under 22.5 jeux";
-                return "Cote Over/Under 22.5 jeux";
+                if (comp.includes("wta")) return { lignes: ["19.5", "21.5", "23.5", "25.5"], defaut: "21.5" };
+                if (comp.includes("atp")) return { lignes: ["20.5", "22.5", "24.5", "26.5"], defaut: "22.5" };
+                return { lignes: ["20.5", "22.5", "24.5", "26.5"], defaut: "22.5" };
             }
 
-            return "Cote Over/Under 2.5";
+            // Football par défaut
+            return { lignes: ["1.5", "2.5", "3.5", "4.5"], defaut: "2.5" };
+        }
+
+        function majRadiosOver(detection) {
+            const lignes = detection.lignes;
+            const defaut = detection.defaut;
+
+            radioOver1.value = lignes[0]; labelOver1.textContent = "Over/Under " + lignes[0];
+            radioOver2.value = lignes[1]; labelOver2.textContent = "Over/Under " + lignes[1];
+            radioOver3.value = lignes[2]; labelOver3.textContent = "Over/Under " + lignes[2];
+            radioOver4.value = lignes[3]; labelOver4.textContent = "Over/Under " + lignes[3];
+
+            // Coche par défaut
+            const radios = [radioOver1, radioOver2, radioOver3, radioOver4];
+            radios.forEach(r => r.checked = false);
+            const indexDefaut = lignes.indexOf(defaut);
+            if (indexDefaut >= 0) radios[indexDefaut].checked = true;
+            else radioOver2.checked = true;
         }
 
         function getNomFavori(sport) {
@@ -347,17 +412,22 @@
             const se = document.getElementById("label_scores_ext");
             const feg = document.getElementById("label_forme_ext_glob");
             const seg = document.getElementById("label_scores_ext_glob");
-            const h2h = document.getElementById("label_h2h");
+            const h2hDom = document.getElementById("label_h2h_dom");
+            const h2hExt = document.getElementById("label_h2h_ext");
             const ah = document.getElementById("label_ah");
             const ov = document.getElementById("label_over25");
             const bt = document.getElementById("label_btts");
             const aideSd = document.getElementById("aide_scores_dom");
             const titreCal = document.getElementById("titre_calendrier");
 
-            const labelOver = detecterLigneOver(sport, competition);
+            const detection = detecterLignesOver(sport, competition);
+            majRadiosOver(detection);
+            const ligneOverChoisie = document.querySelector('input[name="ligne_over"]:checked');
+            const ligneOverVal = ligneOverChoisie ? ligneOverChoisie.value : detection.defaut;
+
             const fav = getNomFavori(sport);
 
-            // --- Gestion du sélecteur de ligne ---
+            // --- Gestion du sélecteur de ligne handicap ---
             if (sport === "football") {
                 blocLigneHandicap.style.display = "block";
                 titreLigne.textContent = "⚖️ Quelle ligne de handicap ?";
@@ -374,7 +444,21 @@
                 blocLigneHandicap.style.display = "none";
             }
 
-            // --- Détermine le suffixe du label AH selon la ligne choisie ---
+            // --- Gestion du sélecteur Over/Under ---
+            if (sport === "tennis") {
+                titreLigneOver.textContent = "🎯 Quelle ligne Over/Under Jeux ?";
+                aideLigneOver.textContent = "Choisis la ligne proposée par ton bookmaker.";
+            } else if (sport === "basket") {
+                titreLigneOver.textContent = "🎯 Quelle ligne Over/Under Points ?";
+                aideLigneOver.textContent = "Choisis la ligne proposée par ton bookmaker.";
+            } else if (sport === "hockey") {
+                titreLigneOver.textContent = "🎯 Quelle ligne Over/Under Buts ?";
+                aideLigneOver.textContent = "Choisis la ligne proposée par ton bookmaker.";
+            } else {
+                titreLigneOver.textContent = "🎯 Quelle ligne Over/Under Buts ?";
+                aideLigneOver.textContent = "Choisis la ligne proposée par ton bookmaker.";
+            }
+
             const ligneChoisie = document.querySelector('input[name="ligne_handicap"]:checked');
             const ligneVal = ligneChoisie ? ligneChoisie.value : "0.5";
             const suffixeLigne = ligneVal === "1.5" ? "1.5" : "0.5";
@@ -398,9 +482,10 @@
                 se.textContent = "5 derniers scores (en sets)";
                 feg.textContent = "5 derniers résultats globaux (V/N/D)";
                 seg.textContent = "5 derniers scores globaux (en sets)";
-                h2h.textContent = "5 derniers H2H (Joueur1-Joueur2, en sets)";
+                h2hDom.textContent = "5 derniers H2H — quand le Joueur 1 reçoit (en sets)";
+                h2hExt.textContent = "5 derniers H2H — quand le Joueur 1 se déplace (en sets)";
                 ah.textContent = "Cote Vainqueur — " + fav.nom;
-                ov.textContent = labelOver;
+                ov.textContent = "Cote Over/Under " + ligneOverVal + " jeux";
                 bt.textContent = "Cote Score Exact Sets — " + fav.nom + " (ex: 2-0)";
                 aideSd.textContent = "Format : sets_pour-sets_contre (ex: 2-0, 2-1, 0-2)";
             } else if (sport === "basket") {
@@ -422,9 +507,10 @@
                 se.textContent = "5 derniers scores à l'extérieur";
                 feg.textContent = "5 derniers résultats globaux (V/N/D)";
                 seg.textContent = "5 derniers scores globaux";
-                h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
+                h2hDom.textContent = "5 derniers H2H — quand l'Équipe 1 reçoit (points)";
+                h2hExt.textContent = "5 derniers H2H — quand l'Équipe 1 se déplace (points)";
                 ah.textContent = "Cote Money Line — " + fav.nom;
-                ov.textContent = labelOver;
+                ov.textContent = "Cote Over/Under " + ligneOverVal + " points";
                 bt.textContent = "Cote Spread -4.5 — " + fav.nom;
                 aideSd.textContent = "Format : points_pour-points_contre (ex: 108-102)";
             } else if (sport === "hockey") {
@@ -447,9 +533,10 @@
                 se.textContent = "5 derniers scores à l'extérieur";
                 feg.textContent = "5 derniers résultats globaux (V/N/D)";
                 seg.textContent = "5 derniers scores globaux";
-                h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
+                h2hDom.textContent = "5 derniers H2H — quand l'Équipe 1 reçoit (buts)";
+                h2hExt.textContent = "5 derniers H2H — quand l'Équipe 1 se déplace (buts)";
                 ah.textContent = "Cote Money Line — " + fav.nom + " (incl. prolongation)";
-                ov.textContent = labelOver;
+                ov.textContent = "Cote Over/Under " + ligneOverVal + " buts";
                 bt.textContent = "Cote Puck Line -" + suffixeLigne + " — " + fav.nom;
                 aideSd.textContent = "Format : buts_pour-buts_contre (ex: 4-2, 3-1)";
             } else {
@@ -472,9 +559,10 @@
                 se.textContent = "5 derniers scores à l'extérieur";
                 feg.textContent = "5 derniers résultats globaux (V/N/D)";
                 seg.textContent = "5 derniers scores globaux";
-                h2h.textContent = "5 derniers scores H2H (Équipe1-Équipe2)";
+                h2hDom.textContent = "5 derniers H2H — quand l'Équipe 1 reçoit (buts)";
+                h2hExt.textContent = "5 derniers H2H — quand l'Équipe 1 se déplace (buts)";
                 ah.textContent = "Cote Handicap Asiatique -" + suffixeLigne + " — " + fav.nom;
-                ov.textContent = labelOver;
+                ov.textContent = "Cote Over/Under " + ligneOverVal;
                 bt.textContent = "Cote BTTS Oui";
                 aideSd.textContent = "Format : buts_pour-buts_contre, séparés par des virgules";
             }
@@ -486,6 +574,7 @@
         if (inputEquipe2) inputEquipe2.addEventListener("input", majLabels);
         document.querySelectorAll('input[name="favori"]').forEach(r => r.addEventListener("change", majLabels));
         document.querySelectorAll('input[name="ligne_handicap"]').forEach(r => r.addEventListener("change", majLabels));
+        document.querySelectorAll('input[name="ligne_over"]').forEach(r => r.addEventListener("change", majLabels));
         majLabels();
     </script>
 </body>
