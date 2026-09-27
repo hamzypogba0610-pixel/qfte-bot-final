@@ -27,6 +27,7 @@
         .bloc-calendrier-basket h3 { color: #a3e635; margin-top: 0; font-size: 14px; }
         .coche-bloc { margin-top: 10px; }
         .ligne-inline { display: inline-block; margin-right: 12px; margin-top: 6px; }
+        .champ-custom { background: #0a0a0a; padding: 10px; border-radius: 6px; margin-top: 12px; border: 1px dashed #fbbf24; }
     </style>
 </head>
 <body>
@@ -126,6 +127,12 @@
                     <input type="radio" name="ligne_over" value="" id="ligne_over_4">
                     <span id="label_over_4">-</span>
                 </label>
+
+                <div class="champ-custom">
+                    <label id="label_custom_over">✏️ Ligne personnalisée (prioritaire)</label>
+                    <input type="number" step="0.5" name="ligne_over_custom" id="input_custom_over" placeholder="Ex: 160.5">
+                    <div class="aide">Si rempli → le bot utilise cette ligne au lieu des radios. Laisse vide sinon.</div>
+                </div>
             </div>
         </div>
 
@@ -239,9 +246,9 @@
                     Voyage long (côte à côte)
                 </label>
             </div>
-                    </div>
+                        </div>
 
-        
+       
     <h2>📊 Cotes 1X2 (les 2 équipes)</h2>
     <label id="label_cote_ouv1">Cote Équipe 1 — Ouverture / Fermeture</label>
     <div class="row">
@@ -285,18 +292,18 @@
 
     <h2>⚔️ Confrontations directes (H2H)</h2>
     <div class="aide" style="margin-bottom: 10px;">
-        ⚠️ Les scores doivent TOUJOURS être au format <b>Équipe1-Équipe2</b> (celle à domicile en premier).
+        ⚠️ Scores TOUJOURS au format <b>Équipe1-Équipe2</b> (celle à domicile en premier).
     </div>
 
-    <label id="label_h2h_dom">5 derniers H2H — quand l'Équipe 1 reçoit (domicile)</label>
+    <label id="label_h2h_dom">5 derniers H2H — quand l'Équipe 1 reçoit</label>
     <input type="text" name="h2h_dom_5" placeholder="Ex: 2-1,1-1,3-0" required>
-    <div class="aide">Scores format Équipe1-Équipe2 (ex. Lyon 2 - 1 Marseille = 2-1)</div>
+    <div class="aide">Format Équipe1-Équipe2 (ex. Lyon 2-1 Marseille = 2-1)</div>
 
-    <label id="label_h2h_ext">5 derniers H2H — quand l'Équipe 1 se déplace (extérieur)</label>
+    <label id="label_h2h_ext">5 derniers H2H — quand l'Équipe 1 se déplace</label>
     <input type="text" name="h2h_ext_5" placeholder="Ex: 1-2,0-1,1-1" required>
-    <div class="aide">⚠️ Toujours Équipe1-Équipe2 (ex. Marseille 2 - 1 Lyon = 1-2)</div>
+    <div class="aide">⚠️ Toujours Équipe1-Équipe2 (ex. Marseille 2-1 Lyon = 1-2)</div>
 
-    <h2>🎯 Cotes des 3 marchés analysés</h2>
+    <h2>🎯 Cotes des marchés analysés</h2>
     <label id="label_ah">Cote Handicap Asiatique -0.5</label>
     <input type="number" step="0.01" name="cote_ah" id="input_ah" required>
 
@@ -311,82 +318,95 @@
     <input type="number" name="volume" value="50000" required>
 
     <button type="submit">Analyser</button>
-    </form>
+</form>
+
+<script>
+    const selectSport = document.getElementById("select_sport");
+    const inputCompetition = document.querySelector('input[name="competition"]');
+    const inputEquipe1 = document.querySelector('input[name="equipe1"]');
+    const inputEquipe2 = document.querySelector('input[name="equipe2"]');
+    const blocSurface = document.getElementById("bloc_surface");
+    const blocFatigue = document.getElementById("bloc_fatigue");
+    const blocCalendrier = document.getElementById("bloc_calendrier");
+    const blocCalendrierBasket = document.getElementById("bloc_calendrier_basket");
+    const blocLigneHandicap = document.getElementById("bloc_ligne_handicap");
+    const blocLigneOver = document.getElementById("bloc_ligne_over");
+    const titreLigne = document.getElementById("titre_ligne_handicap");
+    const aideLigne = document.getElementById("aide_ligne_handicap");
+    const labelLigne1 = document.getElementById("label_ligne_1");
+    const labelLigne2 = document.getElementById("label_ligne_2");
+    const titreLigneOver = document.getElementById("titre_ligne_over");
+    const aideLigneOver = document.getElementById("aide_ligne_over");
+    const radioOver1 = document.getElementById("ligne_over_1");
+    const radioOver2 = document.getElementById("ligne_over_2");
+    const radioOver3 = document.getElementById("ligne_over_3");
+    const radioOver4 = document.getElementById("ligne_over_4");
+    const labelOver1 = document.getElementById("label_over_1");
+    const labelOver2 = document.getElementById("label_over_2");
+    const labelOver3 = document.getElementById("label_over_3");
+    const labelOver4 = document.getElementById("label_over_4");
+    const labelCustomOver = document.getElementById("label_custom_over");
+    const inputCustomOver = document.getElementById("input_custom_over");
+
+    function detecterLignesOver(sport, competition) {
+        const comp = (competition || "").toLowerCase().trim();
+
+        if (sport === "hockey") {
+            if (comp.includes("khl")) return { lignes: ["3.5", "4.5", "5.5", "6.5"], defaut: "4.5" };
+            if (comp.includes("shl") || comp.includes("liiga") || comp.includes("del") || comp.includes("extraliga") || comp.includes("icehl") || comp.includes("alps")) {
+                return { lignes: ["4.0", "4.5", "5.0", "5.5"], defaut: "5.0" };
+            }
+            if (comp.includes("nhl")) return { lignes: ["4.5", "5.5", "6.5", "7.5"], defaut: "5.5" };
+            return { lignes: ["4.5", "5.5", "6.5", "7.5"], defaut: "5.5" };
+        }
+
+        if (sport === "basket") {
+            if (comp.includes("nba")) return { lignes: ["210.5", "220.5", "230.5", "240.5"], defaut: "220.5" };
+            if (comp.includes("euroleague") || comp.includes("euroligue")) return { lignes: ["150.5", "160.5", "170.5", "180.5"], defaut: "160.5" };
+            if (comp.includes("acb") || comp.includes("liga endesa") || comp.includes("espagne")) return { lignes: ["155.5", "165.5", "175.5", "185.5"], defaut: "165.5" };
+            if (comp.includes("lega") || comp.includes("italie") || comp.includes("italy")) return { lignes: ["150.5", "160.5", "170.5", "180.5"], defaut: "160.5" };
+            if (comp.includes("bsl") || comp.includes("turquie") || comp.includes("turkey")) return { lignes: ["150.5", "160.5", "170.5", "180.5"], defaut: "160.5" };
+            if (comp.includes("vtb") || comp.includes("russie") || comp.includes("russia")) return { lignes: ["155.5", "165.5", "175.5", "185.5"], defaut: "165.5" };
+            if (comp.includes("bbl") || comp.includes("allemagne") || comp.includes("germany")) return { lignes: ["155.5", "165.5", "175.5", "185.5"], defaut: "165.5" };
+            if (comp.includes("lnb") || comp.includes("france") || comp.includes("betclic")) return { lignes: ["150.5", "160.5", "170.5", "180.5"], defaut: "160.5" };
+            if (comp.includes("greek") || comp.includes("grèce") || comp.includes("a1")) return { lignes: ["150.5", "160.5", "170.5", "180.5"], defaut: "160.5" };
+            if (comp.includes("euro") || comp.includes("eurocup")) return { lignes: ["150.5", "160.5", "170.5", "180.5"], defaut: "160.5" };
+            return { lignes: ["170.5", "180.5", "190.5", "200.5"], defaut: "180.5" };
+        }
+
+        if (sport === "tennis") {
+            if (comp.includes("roland") || comp.includes("wimbledon") || comp.includes("us open") || comp.includes("australian") || comp.includes("grand chelem") || comp.includes("grand slam")) {
+                return { lignes: ["30.5", "32.5", "34.5", "36.5"], defaut: "32.5" };
+            }
+            if (comp.includes("wta")) return { lignes: ["19.5", "21.5", "23.5", "25.5"], defaut: "21.5" };
+            if (comp.includes("atp")) return { lignes: ["20.5", "22.5", "24.5", "26.5"], defaut: "22.5" };
+            if (comp.includes("challenger")) return { lignes: ["19.5", "21.5", "23.5", "25.5"], defaut: "21.5" };
+            if (comp.includes("itf")) return { lignes: ["18.5", "20.5", "22.5", "24.5"], defaut: "20.5" };
+            return { lignes: ["20.5", "22.5", "24.5", "26.5"], defaut: "22.5" };
+        }
+
+        return { lignes: ["1.5", "2.5", "3.5", "4.5"], defaut: "2.5" };
+    }
+
+    function majRadiosOver(detection) {
+        const lignes = detection.lignes;
+        const defaut = detection.defaut;
+
+        radioOver1.value = lignes[0]; labelOver1.textContent = "Over/Under " + lignes[0];
+        radioOver2.value = lignes[1]; labelOver2.textContent = "Over/Under " + lignes[1];
+        radioOver3.value = lignes[2]; labelOver3.textContent = "Over/Under " + lignes[2];
+        radioOver4.value = lignes[3]; labelOver4.textContent = "Over/Under " + lignes[3];
+
+        const radios = [radioOver1, radioOver2, radioOver3, radioOver4];
+        radios.forEach(r => r.checked = false);
+        const indexDefaut = lignes.indexOf(defaut);
+        if (indexDefaut >= 0) radios[indexDefaut].checked = true;
+        else radioOver2.checked = true;
+
+        inputCustomOver.placeholder = "Ex: " + defaut;
+    }
 
     
-    <script>
-        const selectSport = document.getElementById("select_sport");
-        const inputCompetition = document.querySelector('input[name="competition"]');
-        const inputEquipe1 = document.querySelector('input[name="equipe1"]');
-        const inputEquipe2 = document.querySelector('input[name="equipe2"]');
-        const blocSurface = document.getElementById("bloc_surface");
-        const blocFatigue = document.getElementById("bloc_fatigue");
-        const blocCalendrier = document.getElementById("bloc_calendrier");
-        const blocCalendrierBasket = document.getElementById("bloc_calendrier_basket");
-        const blocLigneHandicap = document.getElementById("bloc_ligne_handicap");
-        const blocLigneOver = document.getElementById("bloc_ligne_over");
-        const titreLigne = document.getElementById("titre_ligne_handicap");
-        const aideLigne = document.getElementById("aide_ligne_handicap");
-        const labelLigne1 = document.getElementById("label_ligne_1");
-        const labelLigne2 = document.getElementById("label_ligne_2");
-        const titreLigneOver = document.getElementById("titre_ligne_over");
-        const aideLigneOver = document.getElementById("aide_ligne_over");
-        const radioOver1 = document.getElementById("ligne_over_1");
-        const radioOver2 = document.getElementById("ligne_over_2");
-        const radioOver3 = document.getElementById("ligne_over_3");
-        const radioOver4 = document.getElementById("ligne_over_4");
-        const labelOver1 = document.getElementById("label_over_1");
-        const labelOver2 = document.getElementById("label_over_2");
-        const labelOver3 = document.getElementById("label_over_3");
-        const labelOver4 = document.getElementById("label_over_4");
-
-        function detecterLignesOver(sport, competition) {
-            const comp = (competition || "").toLowerCase().trim();
-
-            if (sport === "hockey") {
-                if (comp.includes("khl")) return { lignes: ["3.5", "4.5", "5.5", "6.5"], defaut: "4.5" };
-                if (comp.includes("nhl")) return { lignes: ["4.5", "5.5", "6.5", "7.5"], defaut: "5.5" };
-                return { lignes: ["4.5", "5.5", "6.5", "7.5"], defaut: "5.5" };
-            }
-
-            if (sport === "basket") {
-                if (comp.includes("nba")) return { lignes: ["210.5", "220.5", "230.5", "240.5"], defaut: "220.5" };
-                if (comp.includes("euroleague") || comp.includes("euroligue") || comp.includes("euro")) {
-                    return { lignes: ["150.5", "160.5", "170.5", "180.5"], defaut: "160.5" };
-                }
-                return { lignes: ["170.5", "180.5", "190.5", "200.5"], defaut: "180.5" };
-            }
-
-            if (sport === "tennis") {
-                if (comp.includes("roland") || comp.includes("wimbledon") || comp.includes("us open") || comp.includes("australian") || comp.includes("grand chelem") || comp.includes("grand slam")) {
-                    return { lignes: ["30.5", "32.5", "34.5", "36.5"], defaut: "32.5" };
-                }
-                if (comp.includes("wta")) return { lignes: ["19.5", "21.5", "23.5", "25.5"], defaut: "21.5" };
-                if (comp.includes("atp")) return { lignes: ["20.5", "22.5", "24.5", "26.5"], defaut: "22.5" };
-                return { lignes: ["20.5", "22.5", "24.5", "26.5"], defaut: "22.5" };
-            }
-
-            // Football par défaut
-            return { lignes: ["1.5", "2.5", "3.5", "4.5"], defaut: "2.5" };
-        }
-
-        function majRadiosOver(detection) {
-            const lignes = detection.lignes;
-            const defaut = detection.defaut;
-
-            radioOver1.value = lignes[0]; labelOver1.textContent = "Over/Under " + lignes[0];
-            radioOver2.value = lignes[1]; labelOver2.textContent = "Over/Under " + lignes[1];
-            radioOver3.value = lignes[2]; labelOver3.textContent = "Over/Under " + lignes[2];
-            radioOver4.value = lignes[3]; labelOver4.textContent = "Over/Under " + lignes[3];
-
-            // Coche par défaut
-            const radios = [radioOver1, radioOver2, radioOver3, radioOver4];
-            radios.forEach(r => r.checked = false);
-            const indexDefaut = lignes.indexOf(defaut);
-            if (indexDefaut >= 0) radios[indexDefaut].checked = true;
-            else radioOver2.checked = true;
-        }
-
         function getNomFavori(sport) {
             const favori = document.querySelector('input[name="favori"]:checked');
             const valeur = favori ? favori.value : "equipe1";
@@ -423,11 +443,11 @@
             const detection = detecterLignesOver(sport, competition);
             majRadiosOver(detection);
             const ligneOverChoisie = document.querySelector('input[name="ligne_over"]:checked');
-            const ligneOverVal = ligneOverChoisie ? ligneOverChoisie.value : detection.defaut;
+            const ligneOverVal = (inputCustomOver && inputCustomOver.value) ? inputCustomOver.value : (ligneOverChoisie ? ligneOverChoisie.value : detection.defaut);
 
             const fav = getNomFavori(sport);
 
-            // --- Gestion du sélecteur de ligne handicap ---
+            // --- Sélecteur de ligne handicap ---
             if (sport === "football") {
                 blocLigneHandicap.style.display = "block";
                 titreLigne.textContent = "⚖️ Quelle ligne de handicap ?";
@@ -444,19 +464,23 @@
                 blocLigneHandicap.style.display = "none";
             }
 
-            // --- Gestion du sélecteur Over/Under ---
+            // --- Titre du sélecteur Over/Under ---
             if (sport === "tennis") {
                 titreLigneOver.textContent = "🎯 Quelle ligne Over/Under Jeux ?";
                 aideLigneOver.textContent = "Choisis la ligne proposée par ton bookmaker.";
+                labelCustomOver.textContent = "✏️ Ligne personnalisée en jeux (prioritaire)";
             } else if (sport === "basket") {
                 titreLigneOver.textContent = "🎯 Quelle ligne Over/Under Points ?";
                 aideLigneOver.textContent = "Choisis la ligne proposée par ton bookmaker.";
+                labelCustomOver.textContent = "✏️ Ligne personnalisée en points (prioritaire)";
             } else if (sport === "hockey") {
                 titreLigneOver.textContent = "🎯 Quelle ligne Over/Under Buts ?";
                 aideLigneOver.textContent = "Choisis la ligne proposée par ton bookmaker.";
+                labelCustomOver.textContent = "✏️ Ligne personnalisée en buts (prioritaire)";
             } else {
                 titreLigneOver.textContent = "🎯 Quelle ligne Over/Under Buts ?";
                 aideLigneOver.textContent = "Choisis la ligne proposée par ton bookmaker.";
+                labelCustomOver.textContent = "✏️ Ligne personnalisée en buts (prioritaire)";
             }
 
             const ligneChoisie = document.querySelector('input[name="ligne_handicap"]:checked');
@@ -572,6 +596,7 @@
         if (inputCompetition) inputCompetition.addEventListener("input", majLabels);
         if (inputEquipe1) inputEquipe1.addEventListener("input", majLabels);
         if (inputEquipe2) inputEquipe2.addEventListener("input", majLabels);
+        if (inputCustomOver) inputCustomOver.addEventListener("input", majLabels);
         document.querySelectorAll('input[name="favori"]').forEach(r => r.addEventListener("change", majLabels));
         document.querySelectorAll('input[name="ligne_handicap"]').forEach(r => r.addEventListener("change", majLabels));
         document.querySelectorAll('input[name="ligne_over"]').forEach(r => r.addEventListener("change", majLabels));
