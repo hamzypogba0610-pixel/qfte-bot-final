@@ -93,8 +93,17 @@ def _scores_football(data):
 
 
 def _scores_basket(data):
+    """
+    Projection basket corrigée :
+    - Le total_estime est le total DU MATCH (ex. 170 pts)
+    - À la mi-temps, chaque équipe a joué la moitié du temps
+    - Donc points par équipe à la mi-temps = total_estime / 4
+    - L'écart à la mi-temps est réduit (~50% de l'écart final)
+    """
     ecart_moyen = float(data.get("lambda_home", 0))
+    total_estime = float(data.get("total_buts_comp", 180) or 180)
 
+    # --- Marges de victoire (écart final) ---
     marges = []
     for m in range(int(ecart_moyen) - 4, int(ecart_moyen) + 5):
         p = norm_cdf(m + 0.5, ecart_moyen, 12) - norm_cdf(m - 0.5, ecart_moyen, 12)
@@ -103,9 +112,13 @@ def _scores_basket(data):
     marges.sort(key=lambda x: x["proba"], reverse=True)
     top_2_scores = marges[:2]
 
-    total_estime = 180
-    score_ht = total_estime / 2
-    proj_ht = f"{(score_ht + ecart_moyen/2):.0f}-{(score_ht - ecart_moyen/2):.0f}"
+    # --- Score à la mi-temps (correction) ---
+    # Chaque équipe marque total_estime / 2 sur tout le match
+    # À la mi-temps → total_estime / 4 par équipe
+    score_ht_par_equipe = total_estime / 4
+    # L'écart à la mi-temps est réduit (généralement 50% de l'écart final)
+    ecart_ht = ecart_moyen * 0.5
+    proj_ht = f"{(score_ht_par_equipe + ecart_ht/2):.0f}-{(score_ht_par_equipe - ecart_ht/2):.0f}"
 
     top_ht_score = {"score": proj_ht, "proba": 0.15}
 
@@ -121,7 +134,6 @@ def _scores_basket(data):
     data["top_2_scores"] = top_2_scores
     data["top_ht_score"] = top_ht_score
     return data
-
 
 
 def _scores_tennis(data):
@@ -170,23 +182,12 @@ def _scores_tennis(data):
     return data
 
 
-
 def _scores_hockey(data):
-    """
-    Prédiction des scores hockey + prédiction par période.
-
-    - Score exact le plus probable (0-0 à 8-8)
-    - Top 2 scores exacts
-    - Score après 1ère période
-    - Scores prédits par période (P1, P2, P3)
-    """
     lambda_home = float(data.get("lambda_home", 3.0))
     lambda_away = float(data.get("lambda_away", 2.8))
 
-    # Répartition par période (doit correspondre à 03_market.py)
     repartition = {"p1": 0.28, "p2": 0.35, "p3": 0.37}
 
-    # --- Scores exacts sur le match entier (Poisson simple, pas de DC au hockey) ---
     scores = []
     for i in range(0, 9):
         for j in range(0, 9):
@@ -196,7 +197,6 @@ def _scores_hockey(data):
     scores.sort(key=lambda s: s["proba"], reverse=True)
     top_2_scores = scores[:2]
 
-    # --- Score après 1ère période ---
     lh_p1 = lambda_home * repartition["p1"]
     la_p1 = lambda_away * repartition["p1"]
 
@@ -208,7 +208,6 @@ def _scores_hockey(data):
     scores_p1.sort(key=lambda s: s["proba"], reverse=True)
     top_ht_score = scores_p1[0]
 
-    # --- Scores par période (P1, P2, P3) ---
     scores_periodes = {}
     for periode, part in repartition.items():
         lh_p = lambda_home * part
@@ -235,7 +234,6 @@ def _scores_hockey(data):
             "top_3": scores_p[:3],
         }
 
-    # --- Confiance sur chaque marché ---
     marches = data.get("marches", [])
     resultat = []
     for m in marches:
